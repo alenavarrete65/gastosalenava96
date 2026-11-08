@@ -10,7 +10,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="icon-180.png">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
 <title>Mis gastos</title>
 <style>
 :root{--bg:#edf1ea;--card:#fbfcf9;--tx:#13201a;--mu:#667268;--bd:#d9e0d4;--in:#1c8556;--out:#d8453b;--sh:0 10px 24px -18px #13201a99;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -28,7 +28,7 @@ box-shadow:inset 0 0 0 5px #ffffff22,inset 0 0 0 6px #ffffff40,0 18px 30px -18px
 .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 40%,#ffffff40 50%,transparent 60%);transform:translateX(-100%);animation:shine 1.4s .7s 1 both}
 .hero>*{position:relative;z-index:1}
 .sum{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.hero small{color:#cfe6d8;font-size:13px}
+.hero small{color:#cfe6d8;font-size:13px;display:block}
 .hero>div:nth-child(1) small::before{content:"↗ "}.hero>div:nth-child(2) small::before{content:"↙ "}
 .hero b{font-weight:700;font-variant-numeric:tabular-nums}
 #sI,#sG{font-size:22px}
@@ -88,6 +88,25 @@ section{animation:pop .3s}
 @keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(360deg);opacity:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 [hidden]{display:none!important}
+
+body{font-family:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif}
+button{font-weight:600;letter-spacing:-.005em}
+button.pri,.fab{box-shadow:0 1px 0 #ffffff33 inset,0 12px 20px -12px #000}
+.fab{display:flex;align-items:center;gap:8px;font-size:16px;padding:15px 22px 15px 18px}
+.fab b{font:800 24px/1 "Bricolage Grotesque",system-ui;transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
+.fab:active b{transform:rotate(90deg) scale(1.2)}
+label{font-weight:600;letter-spacing:.01em}
+.mov>div:first-child b{font-weight:600}
+.tabs button{padding:10px 2px;font-size:14px}
+#ind{width:calc((100% - 8px)/3)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:99px;font-size:14px}
+.chip.on{background:var(--tx);color:var(--bg);border-color:var(--tx);animation:pop .25s}
+.cr{display:flex;gap:12px;align-items:center;padding:8px 0}
+.ce{font-size:24px;width:34px;text-align:center}
+.cn{display:flex;justify-content:space-between;gap:8px}
+.cn b{font-variant-numeric:tabular-nums}
+select{font-size:15px;padding-right:4px}
 </style>
 </head>
 <body>
@@ -101,9 +120,9 @@ section{animation:pop .3s}
 </div>
 
 <div class="row"><select id="fm"></select><select id="ff"></select></div>
-<input id="q" type="search" placeholder="Buscar por concepto…">
+<div class="row" style="margin-top:8px"><select id="fc"></select><input id="q" type="search" placeholder="Buscar…"></div>
 
-<div class="tabs"><i id="ind"></i><button id="t1" class="on">Movimientos</button><button id="t2">Carpetas</button></div>
+<div class="tabs"><i id="ind"></i><button id="t1" class="on">Movimientos</button><button id="t2">Carpetas</button><button id="t3">Categorías</button></div>
 
 <section id="v1"><div class="card" id="list"></div></section>
 
@@ -121,15 +140,17 @@ section{animation:pop .3s}
 <input type="file" id="file" accept=".json" hidden>
 </div>
 </section>
+<section id="v3" hidden><div id="catv"></div></section>
 </main>
 
-<button class="pri fab" id="add">+ Añadir</button>
+<button class="pri fab" id="add"><b>＋</b>Añadir</button>
 <div id="toast" hidden></div>
 
 <div id="sheet" hidden>
 <div class="card">
 <div class="seg"><button id="sg" class="on">Gasto</button><button id="si">Ingreso</button></div>
 <label>Importe (€)</label><input id="a" type="number" inputmode="decimal" min="0" step="0.01">
+<label>Categoría</label><div class="chips" id="cats"></div>
 <label>Fecha</label><input id="d" type="date">
 <label>Concepto</label><input id="c" placeholder="Ej. Gasolina, cuota del coche…">
 <label>Carpeta</label><select id="f"></select>
@@ -144,10 +165,12 @@ const CFG={apiKey:"AIzaSyAuJa-7EPq0QLt__eU4ab9gEJO8CdahdRg",authDomain:"gastos-e
 const $=id=>document.getElementById(id);
 const KEY='gastos-v1',FB='https://www.gstatic.com/firebasejs/10.14.1/';
 const MES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-let S={movs:[],folders:[]},tipo='gasto',last='',st=true,ref=null,unsub=null,first=false,auth=null,db=null,M={};
+let S={movs:[],folders:[]},tipo='gasto',cat='',last='',st=true,ref=null,unsub=null,first=false,auth=null,db=null,M={};
 try{const r=localStorage.getItem(KEY);if(r)S=JSON.parse(r)}catch(e){}
 if(!S.movs)S.movs=[];if(!S.folders)S.folders=[];
-function ensureG(){if(!S.folders.some(f=>f.id==='general'))S.folders.unshift({id:'general',name:'General',goal:0});S.movs.forEach(x=>{if(!x.folder)x.folder='general'})}
+const mk=a=>a.map(([id,e,name])=>({id,e,name}));
+const DEF=()=>({gasto:mk([['g-super','🛒','Supermercado'],['g-comida','🍽️','Comer fuera'],['g-transp','🚗','Transporte'],['g-hogar','🏠','Hogar'],['g-ocio','🎉','Ocio'],['g-salud','💊','Salud'],['g-ropa','👕','Ropa'],['g-otros','📦','Otros']]),ingreso:mk([['i-trabajo','💼','Trabajo'],['i-venta','🏷️','Ventas'],['i-regalo','🎁','Regalo'],['i-otros','📦','Otros']])});
+function ensureG(){if(!S.cats)S.cats=DEF();if(!S.folders.some(f=>f.id==='general'))S.folders.unshift({id:'general',name:'General',goal:0});S.movs.forEach(x=>{if(!x.folder)x.folder='general'})}
 ensureG();
 const store=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 function save(){store();if(ref)M.FS.setDoc(ref,S).catch(()=>{})}
@@ -157,6 +180,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const fdate=s=>{const[y,m,d]=s.split('-');return d+'/'+m+'/'+y};
 const pad=n=>String(n).padStart(2,'0');
 const today=()=>{const t=new Date();return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
+const catById=id=>[...S.cats.gasto,...S.cats.ingreso].find(c=>c.id===id);
 const fname=id=>(S.folders.find(f=>f.id===id)||{}).name||'General';
 const sum=(L,t)=>L.filter(x=>x.type===t).reduce((s,x)=>s+x.amount,0);
 const buzz=()=>navigator.vibrate&&navigator.vibrate(12);
@@ -190,13 +214,16 @@ function opts(){
  $('fm').innerHTML='<option value="">Todos los meses</option>'+months.map(m=>`<option value="${m}">${MES[+m.slice(5)-1]} ${m.slice(0,4)}</option>`).join('');
  $('fm').value=months.includes(cm)?cm:'';
  const fo=S.folders.map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');
- $('ff').innerHTML='<option value="">Todas las carpetas</option>'+fo;
+ $('ff').innerHTML='<option value="">Todas carpetas</option>'+fo;
  $('ff').value=S.folders.some(f=>f.id===cf)?cf:'';
+ const cc=$('fc').value,co=a=>a.map(c=>`<option value="${c.id}">${c.e} ${esc(c.name)}</option>`).join('');
+ $('fc').innerHTML='<option value="">Todas categorías</option><optgroup label="Gastos">'+co(S.cats.gasto)+'</optgroup><optgroup label="Ingresos">'+co(S.cats.ingreso)+'</optgroup>';
+ $('fc').value=catById(cc)?cc:'';
  $('f').innerHTML=fo;
 }
 function filtered(){
- const m=$('fm').value,f=$('ff').value,q=$('q').value.trim().toLowerCase();
- return S.movs.filter(x=>(!m||x.date.startsWith(m))&&(!f||x.folder===f)&&(!q||(x.concept||'').toLowerCase().includes(q)))
+ const m=$('fm').value,f=$('ff').value,c=$('fc').value,q=$('q').value.trim().toLowerCase();
+ return S.movs.filter(x=>(!m||x.date.startsWith(m))&&(!f||x.folder===f)&&(!c||x.cat===c)&&(!q||(x.concept||'').toLowerCase().includes(q)))
   .sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
 }
 function chart(){
@@ -214,7 +241,7 @@ function render(){
  const L=filtered(),i=sum(L,'ingreso'),g=sum(L,'gasto');
  tween($('sI'),i);tween($('sG'),g);tween($('sB'),i-g);
  $('sB').className=i-g<0?'out':'in';
- $('list').innerHTML=L.length?L.map((x,k)=>`<div class="mov${x.id===last?' new':st?' st':''}" id="r${x.id}"${st?` style="animation-delay:${Math.min(k,10)*45}ms"`:''}><div class="l"><i class="ic ${x.type}">${x.type==='ingreso'?'↗':'↙'}</i><div><b>${esc(x.concept||(x.type==='gasto'?'Gasto':'Ingreso'))}</b><small>${fdate(x.date)}<span class="ch"><i style="background:${fc(x.folder)}"></i>${esc(fname(x.folder))}</span></small></div></div><div><b class="${x.type==='ingreso'?'in':'out'}">${x.type==='ingreso'?'+':'−'}${eur(x.amount)}</b><button class="x" data-d="${x.id}" aria-label="Borrar">✕</button></div></div>`).join(''):'<div class="empty">Aún no hay movimientos. Pulsa «+ Añadir».</div>';
+ $('list').innerHTML=L.length?L.map((x,k)=>`<div class="mov${x.id===last?' new':st?' st':''}" id="r${x.id}"${st?` style="animation-delay:${Math.min(k,10)*45}ms"`:''}><div class="l"><i class="ic ${x.type}">${(catById(x.cat)||{}).e||(x.type==='ingreso'?'↗':'↙')}</i><div><b>${esc(x.concept||(catById(x.cat)||{}).name||(x.type==='gasto'?'Gasto':'Ingreso'))}</b><small>${fdate(x.date)}<span class="ch"><i style="background:${fc(x.folder)}"></i>${esc(fname(x.folder))}</span></small></div></div><div><b class="${x.type==='ingreso'?'in':'out'}">${x.type==='ingreso'?'+':'−'}${eur(x.amount)}</b><button class="x" data-d="${x.id}" aria-label="Borrar">✕</button></div></div>`).join(''):'<div class="empty">Aún no hay movimientos. Pulsa «+ Añadir».</div>';
  last='';st=false;
  const ti=sum(S.movs,'ingreso'),tg=sum(S.movs,'gasto');
  $('gen').innerHTML=`<div class='card' style='border-color:var(--ac)'><b>Balance general</b><div class='mu'>Todas las carpetas</div><div class='mu' style='margin-top:6px'>Ingresos ${N(ti,'in')} · Gastos ${N(tg,'out')}</div><div style='margin-top:6px;font-size:22px'>${N(ti-tg,ti-tg<0?'out':'in')}</div>${ti-tg<0?`<div class='mu out'>Has gastado ${eur(tg-ti)} más de lo que has ingresado</div>`:''}</div>
@@ -229,13 +256,23 @@ function render(){
   ${gi-gg<0?`<div class='mu out'>Más gastos que ingresos: ${eur(gg-gi)}</div>`:''}
   ${f.goal?`<div class="bar"><i style="width:0;background:${fc(f.id)}" data-w="${Math.min(100,gg/f.goal*100)}"></i></div><div class='mu'>Pagado ${eur(gg)} de ${eur(f.goal)} · faltan ${eur(Math.max(0,f.goal-gg))}</div>`:''}
   ${est?`<div class='mu'>A este ritmo: ~${est} ${est===1?'mes':'meses'} para terminar</div>`:''}</div>`}).join('');
+ $('catv').innerHTML=catView(L);
  document.querySelectorAll('[data-n]').forEach(e=>{e._v=0;tween(e,+e.dataset.n)});
  requestAnimationFrame(()=>requestAnimationFrame(()=>document.querySelectorAll('[data-w]').forEach(e=>e.style.width=e.dataset.w+'%')));
 }
+function catView(L){
+ const blk=(t,title,col)=>{
+  const T=L.filter(x=>x.type===t),tot=sum(T,t),by={};
+  T.forEach(x=>by[x.cat||'']=(by[x.cat||'']||0)+x.amount);
+  const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  return `<div class='card'><b>${title}</b> <span class='mu'>${eur(tot)}</span>`+(rows.length?rows.map(([id,v])=>{const c=catById(id)||{e:'•',name:'Sin categoría'};return `<div class='cr'><span class='ce'>${c.e}</span><div style='flex:1'><div class='cn'><span>${esc(c.name)}</span><b>${eur(v)}</b></div><div class='bar'><i style='width:0;background:${col}' data-w='${v/tot*100}'></i></div></div></div>`}).join(''):`<div class='empty'>Sin ${t==='gasto'?'gastos':'ingresos'} en este periodo</div>`)+`</div>`};
+ return `<div class='mu' style='margin:0 0 10px'>Según el mes y la carpeta que tengas filtrados arriba</div>`+blk('gasto','En qué gastas','var(--out)')+blk('ingreso','De dónde ingresas','var(--in)');
+}
 function refresh(){opts();render()}
-function setTab(n){st=true;$('ind').style.transform='translateX('+(n-1)*100+'%)';$('v1').hidden=n!==1;$('v2').hidden=n!==2;$('t1').className=n===1?'on':'';$('t2').className=n===2?'on':'';$('add').hidden=n!==1;if(n===2)render()}
-function setTipo(t){tipo=t;$('sg').className=t==='gasto'?'on':'';$('si').className=t==='ingreso'?'on':''}
-$('t1').onclick=()=>setTab(1);$('t2').onclick=()=>setTab(2);
+function setTab(n){st=true;$('ind').style.transform='translateX('+(n-1)*100+'%)';[1,2,3].forEach(i=>{$('v'+i).hidden=i!==n;$('t'+i).className=i===n?'on':''});$('add').hidden=n!==1;if(n>1)render()}
+function drawCats(){$('cats').innerHTML=S.cats[tipo].map(c=>`<button class="chip${c.id===cat?' on':''}" data-c="${c.id}">${c.e} ${esc(c.name)}</button>`).join('')+'<button class="chip" data-c="+">＋ Nueva</button>'}
+function setTipo(t){tipo=t;cat='';drawCats();$('sg').className=t==='gasto'?'on':'';$('si').className=t==='ingreso'?'on':''}
+$('t1').onclick=()=>setTab(1);$('t2').onclick=()=>setTab(2);$('t3').onclick=()=>setTab(3);
 $('sg').onclick=()=>setTipo('gasto');$('si').onclick=()=>setTipo('ingreso');
 $('add').onclick=()=>{$('a').value='';$('c').value='';$('d').value=today();const f=$('ff').value;$('f').value=S.folders.some(x=>x.id===f)?f:'general';setTipo('gasto');$('sheet').hidden=false;$('a').focus()};
 $('cancel').onclick=()=>$('sheet').hidden=true;
@@ -244,7 +281,7 @@ $('save').onclick=()=>{
  const a=parseFloat($('a').value);
  if(!(a>0)){$('a').focus();return}
  const id=uid();last=id;
- S.movs.push({id,type:tipo,amount:a,date:$('d').value||today(),concept:$('c').value.trim(),folder:$('f').value||'general'});
+ S.movs.push({id,type:tipo,amount:a,date:$('d').value||today(),concept:$('c').value.trim(),folder:$('f').value||'general',cat});
  save();buzz();burst(tipo);$('sheet').hidden=true;refresh();
 };
 $('fadd').onclick=()=>{
@@ -253,14 +290,16 @@ $('fadd').onclick=()=>{
  $('fn').value='';$('fg').value='';save();buzz();refresh();
 };
 document.addEventListener('click',e=>{
- const d=e.target.dataset.d,df=e.target.dataset.df;
+ const d=e.target.dataset.d,df=e.target.dataset.df,dc=e.target.dataset.c;
+ if(dc==='+'){const n=prompt('Nombre de la categoría (puedes empezar con un emoji)');if(n&&n.trim()){const id=(tipo==='gasto'?'g':'i')+uid();S.cats[tipo].push({id,e:'🏷️',name:n.trim()});cat=id;save();drawCats()}}
+ else if(dc){cat=cat===dc?'':dc;drawCats()}
  if(d){
   const m=S.movs.find(x=>x.id===d),row=$('r'+d);if(row)row.classList.add('gone');
   setTimeout(()=>{S.movs=S.movs.filter(x=>x.id!==d);save();refresh();toast('Movimiento borrado',()=>{S.movs.push(m);save();refresh()})},250);
  }
  if(df&&confirm('¿Borrar la carpeta? Sus movimientos pasarán a General.')){S.folders=S.folders.filter(x=>x.id!==df);S.movs.forEach(x=>{if(x.folder===df)x.folder='general'});save();refresh()}
 });
-$('fm').onchange=$('ff').onchange=$('q').oninput=render;
+$('fm').onchange=$('ff').onchange=$('fc').onchange=$('q').oninput=render;
 $('exp').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download='gastos-'+today()+'.json';a.click()};
 $('imp').onclick=()=>$('file').click();
 $('file').onchange=e=>{const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(j.movs&&j.folders&&confirm('Esto reemplazará los datos actuales. ¿Continuar?')){S=j;ensureG();save();refresh()}}catch(x){alert('Archivo no válido')}};if(e.target.files[0])r.readAsText(e.target.files[0])};
@@ -281,8 +320,8 @@ async function initCloud(){
    unsub=FS.onSnapshot(ref,s=>{
     if(s.metadata.hasPendingWrites)return;
     const d=s.exists()?s.data():{};
-    if(first){first=false;S={movs:merge(d.movs||[],S.movs),folders:merge(d.folders||[],S.folders)};ensureG();store();FS.setDoc(ref,S).catch(()=>{})}
-    else{S={movs:d.movs||[],folders:d.folders||[]};ensureG();store()}
+    if(first){first=false;S={movs:merge(d.movs||[],S.movs),folders:merge(d.folders||[],S.folders),cats:d.cats||S.cats};ensureG();store();FS.setDoc(ref,S).catch(()=>{})}
+    else{S={movs:d.movs||[],folders:d.folders||[],cats:d.cats||S.cats};ensureG();store()}
     refresh();
    });
   });
