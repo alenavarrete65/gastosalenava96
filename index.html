@@ -11,10 +11,28 @@
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+let T={m:'sys',a:'20:00',b:'07:00'};
+try{T={...T,...JSON.parse(localStorage.getItem('gastos-tema'))}}catch(e){}
+const mins=t=>{const[h,m]=t.split(':');return+h*60+(+m)};
+function isDark(){
+ if(T.m==='dark')return true;if(T.m==='light')return false;
+ if(T.m==='sys')return matchMedia('(prefers-color-scheme:dark)').matches;
+ const n=new Date(),x=n.getHours()*60+n.getMinutes(),a=mins(T.a),b=mins(T.b);
+ return a<=b?(x>=a&&x<b):(x>=a||x<b);
+}
+function applyTheme(){
+ const r=document.documentElement;
+ if(T.m==='sys')r.removeAttribute('data-theme');else r.dataset.theme=isDark()?'dark':'light';
+ document.querySelector('meta[name=theme-color]').content=isDark()?'#0c1511':'#edf1ea';
+}
+applyTheme();
+</script>
 <title>Mis gastos</title>
 <style>
-:root{--bg:#edf1ea;--card:#fbfcf9;--tx:#13201a;--mu:#667268;--bd:#d9e0d4;--in:#1c8556;--out:#d8453b;--sh:0 10px 24px -18px #13201a99;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#0c1511;--card:#14201b;--tx:#e6efe9;--mu:#8a9b92;--bd:#233229;--in:#52d49b;--out:#ff7f72;--sh:0 10px 24px -16px #000}}
+:root{color-scheme:light;--bg:#edf1ea;--card:#fbfcf9;--tx:#13201a;--mu:#667268;--bd:#d9e0d4;--in:#1c8556;--out:#d8453b;--sh:0 10px 24px -18px #13201a99;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0c1511;--card:#14201b;--tx:#e6efe9;--mu:#8a9b92;--bd:#233229;--in:#52d49b;--out:#ff7f72;--sh:0 10px 24px -16px #000;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#0c1511;--card:#14201b;--tx:#e6efe9;--mu:#8a9b92;--bd:#233229;--in:#52d49b;--out:#ff7f72;--sh:0 10px 24px -16px #000;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:640px;margin:0 auto;padding:16px 16px 110px}
@@ -110,6 +128,7 @@ select{font-size:15px;padding-right:4px}
 #sh{position:fixed;inset:0;background:var(--bg);z-index:15;overflow:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(28px + env(safe-area-inset-bottom,0px));animation:fade .2s}
 .shin{max-width:640px;margin:0 auto}
 input[type=range]{padding:0;border:0;background:none;accent-color:var(--in);margin:10px 0}
+body,.card{transition:background-color .5s,color .5s,border-color .5s}
 </style>
 </head>
 <body>
@@ -137,6 +156,10 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--in);marg
 <label>Nombre</label><input id="fn" placeholder="Ej. Reforma, Coche, Oposición">
 <label>Objetivo total (opcional, para gastos a largo plazo)</label><input id="fg" type="number" inputmode="decimal" min="0" step="0.01" placeholder="€">
 <p><button class="pri" id="fadd">Crear carpeta</button></p>
+</div>
+<div class="card"><b>Apariencia</b>
+<div class="chips" id="thm"></div>
+<div class="row" id="thh" style="margin-top:12px" hidden><div><label style="margin-top:0">Oscuro desde</label><input id="th1" type="time"></div><div><label style="margin-top:0">Hasta</label><input id="th2" type="time"></div></div>
 </div>
 <div class="card"><b>Copia de seguridad</b>
 <div class="row" style="margin-top:10px"><button id="exp">Exportar</button><button id="imp">Importar</button></div>
@@ -413,6 +436,24 @@ $('sh').onclick=async e=>{
   FS.updateDoc(gref,{[k]:FS.arrayRemove(o)}).then(()=>toast('Borrado',()=>FS.updateDoc(gref,{[k]:FS.arrayUnion(o)})));
  }
 };
+
+// ----- Tema -----
+const TM=[['sys','🖥️ Sistema'],['time','🕗 Por horas'],['light','☀️ Claro'],['dark','🌙 Oscuro']];
+function drawTheme(){
+ $('thm').innerHTML=TM.map(([k,n])=>`<button class="chip${T.m===k?' on':''}" data-th="${k}">${n}</button>`).join('');
+ $('thh').hidden=T.m!=='time';$('th1').value=T.a;$('th2').value=T.b;
+}
+function setTheme(){
+ try{localStorage.setItem('gastos-tema',JSON.stringify(T))}catch(e){}
+ const go=()=>{applyTheme();drawTheme()};
+ if(document.startViewTransition&&!matchMedia('(prefers-reduced-motion:reduce)').matches)document.startViewTransition(go);else go();
+}
+$('thm').onclick=e=>{const k=e.target.dataset.th;if(k){T.m=k;setTheme()}};
+$('th1').onchange=()=>{T.a=$('th1').value||T.a;setTheme()};
+$('th2').onchange=()=>{T.b=$('th2').value||T.b;setTheme()};
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',applyTheme);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)applyTheme()});
+setInterval(applyTheme,60000);drawTheme();
 
 // ----- Sincronización (Firebase) -----
 const setCloud=on=>$('cloud').textContent=on?'☁️ Sincronizado':'☁️ Iniciar sesión';
