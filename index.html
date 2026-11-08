@@ -144,7 +144,7 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 <div class="row"><select id="fm"></select><select id="ff"></select></div>
 <div class="row" style="margin-top:8px"><select id="fc"></select><input id="q" type="search" placeholder="Buscar…"></div>
 
-<div class="tabs"><i id="ind"></i><button id="t1" class="on">Movimientos</button><button id="t2">Carpetas</button><button id="t3">Categorías</button></div>
+<div class="tabs"><i id="ind"></i><button id="t1" class="on">Movimientos</button><button id="t2">Cuentas</button><button id="t3">Categorías</button></div>
 
 <section id="v1"><div class="card" id="list"></div></section>
 
@@ -152,10 +152,11 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 <div id="gen"></div>
 <div id="folders"></div>
 <div class="card">
-<b>Nueva carpeta</b>
-<label>Nombre</label><input id="fn" placeholder="Ej. Reforma, Coche, Oposición">
+<b>Nueva cuenta</b>
+<label>Nombre</label><input id="fn" placeholder="Ej. Efectivo, BBVA, Santander, Reforma…">
+<label>Tipo</label><select id="fk"><option value="banco">🏦 Banco</option><option value="efectivo">💶 Efectivo</option></select>
 <label>Objetivo total (opcional, para gastos a largo plazo)</label><input id="fg" type="number" inputmode="decimal" min="0" step="0.01" placeholder="€">
-<p><button class="pri" id="fadd">Crear carpeta</button></p>
+<p><button class="pri" id="fadd">Crear cuenta</button></p>
 </div>
 <div class="card"><b>Apariencia</b>
 <div class="chips" id="thm"></div>
@@ -194,7 +195,7 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 <label>Categoría</label><div class="chips" id="cats"></div>
 <label>Fecha</label><input id="d" type="date">
 <label>Concepto</label><input id="c" placeholder="Ej. Gasolina, cuota del coche…">
-<label>Carpeta</label><select id="f"></select>
+<label>Cuenta</label><select id="f"></select>
 <div class="row" style="margin-top:14px"><button id="cancel">Cancelar</button><button class="pri" id="save">Guardar</button></div>
 </div></div>
 
@@ -211,7 +212,8 @@ try{const r=localStorage.getItem(KEY);if(r)S=JSON.parse(r)}catch(e){}
 if(!S.movs)S.movs=[];if(!S.folders)S.folders=[];
 const mk=a=>a.map(([id,e,name])=>({id,e,name}));
 const DEF=()=>({gasto:mk([['g-super','🛒','Supermercado'],['g-comida','🍽️','Comer fuera'],['g-transp','🚗','Transporte'],['g-hogar','🏠','Hogar'],['g-ocio','🎉','Ocio'],['g-salud','💊','Salud'],['g-ropa','👕','Ropa'],['g-otros','📦','Otros']]),ingreso:mk([['i-trabajo','💼','Trabajo'],['i-venta','🏷️','Ventas'],['i-regalo','🎁','Regalo'],['i-otros','📦','Otros']])});
-function ensureG(){if(!S.cats)S.cats=DEF();if(!S.folders.some(f=>f.id==='general'))S.folders.unshift({id:'general',name:'General',goal:0});S.movs.forEach(x=>{if(!x.folder)x.folder='general'})}
+function syncCats(){['gasto','ingreso'].forEach(t=>{const o=t==='gasto'?'ingreso':'gasto';S.cats[o]=S.cats[o]||[];S.cats[t].forEach(c=>{if(!c.id.includes('-')&&!S.cats[o].some(x=>x.id===c.id))S.cats[o].push({...c})})})}
+function ensureG(){if(!S.cats)S.cats=DEF();syncCats();if(!S.folders.some(f=>f.id==='general'))S.folders.unshift({id:'general',name:'Sin cuenta',goal:0});S.folders.forEach(f=>{if(f.id==='general')f.name='Sin cuenta';if(!f.kind)f.kind=f.id==='general'?'otro':(/efectivo|cash|met[aá]lico/i.test(f.name)?'efectivo':'banco')});S.movs.forEach(x=>{if(!x.folder)x.folder='general'})}
 ensureG();
 const store=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 function save(){store();if(ref)M.FS.setDoc(ref,S).catch(()=>{})}
@@ -222,7 +224,8 @@ const fdate=s=>{const[y,m,d]=s.split('-');return d+'/'+m+'/'+y};
 const pad=n=>String(n).padStart(2,'0');
 const today=()=>{const t=new Date();return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
 const catById=id=>[...S.cats.gasto,...S.cats.ingreso].find(c=>c.id===id);
-const fname=id=>(S.folders.find(f=>f.id===id)||{}).name||'General';
+const fname=id=>(S.folders.find(f=>f.id===id)||{}).name||'Sin cuenta';
+const accs=()=>S.folders.filter(f=>f.id!=='general'),vis=()=>S.folders.filter(f=>f.id!=='general'||S.movs.some(x=>x.folder==='general')),formAccs=()=>accs().length?accs():S.folders;
 const sum=(L,t)=>L.filter(x=>x.type===t).reduce((s,x)=>s+x.amount,0);
 const buzz=()=>navigator.vibrate&&navigator.vibrate(12);
 const NC=['#8a8f98','#d8453b','#3568c9','#e8892b','#2e9a62','#e6b822'];
@@ -254,13 +257,13 @@ function opts(){
  const cm=$('fm').value,cf=$('ff').value;
  $('fm').innerHTML='<option value="">Todos los meses</option>'+months.map(m=>`<option value="${m}">${MES[+m.slice(5)-1]} ${m.slice(0,4)}</option>`).join('');
  $('fm').value=months.includes(cm)?cm:'';
- const fo=S.folders.map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');
- $('ff').innerHTML='<option value="">Todas carpetas</option>'+fo;
- $('ff').value=S.folders.some(f=>f.id===cf)?cf:'';
+ const op=a=>a.map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join(''),fo=op(vis());
+ $('ff').innerHTML='<option value="">Todas las cuentas</option>'+fo;
+ $('ff').value=vis().some(f=>f.id===cf)?cf:'';
  const cc=$('fc').value,co=a=>a.map(c=>`<option value="${c.id}">${c.e} ${esc(c.name)}</option>`).join('');
  $('fc').innerHTML='<option value="">Todas categorías</option><optgroup label="Gastos">'+co(S.cats.gasto)+'</optgroup><optgroup label="Ingresos">'+co(S.cats.ingreso)+'</optgroup>';
  $('fc').value=catById(cc)?cc:'';
- $('f').innerHTML=fo;
+ $('f').innerHTML=op(formAccs());
 }
 function filtered(){
  const m=$('fm').value,f=$('ff').value,c=$('fc').value,q=$('q').value.trim().toLowerCase();
@@ -285,13 +288,15 @@ function render(){
  $('list').innerHTML=L.length?L.map((x,k)=>`<div class="mov${x.id===last?' new':st?' st':''}" id="r${x.id}"${st?` style="animation-delay:${Math.min(k,10)*45}ms"`:''}><div class="l"><i class="ic ${x.type}">${(catById(x.cat)||{}).e||(x.type==='ingreso'?'↗':'↙')}</i><div><b>${esc(x.concept||(catById(x.cat)||{}).name||(x.type==='gasto'?'Gasto':'Ingreso'))}</b><small>${fdate(x.date)}<span class="ch"><i style="background:${fc(x.folder)}"></i>${esc(fname(x.folder))}</span></small></div></div><div><b class="${x.type==='ingreso'?'in':'out'}">${x.type==='ingreso'?'+':'−'}${eur(x.amount)}</b><button class="x" data-d="${x.id}" aria-label="Borrar">✕</button></div></div>`).join(''):'<div class="empty">Aún no hay movimientos. Pulsa «+ Añadir».</div>';
  last='';st=false;
  const ti=sum(S.movs,'ingreso'),tg=sum(S.movs,'gasto');
- $('gen').innerHTML=`<div class='card' style='border-color:var(--ac)'><b>Balance general</b><div class='mu'>Todas las carpetas</div><div class='mu' style='margin-top:6px'>Ingresos ${N(ti,'in')} · Gastos ${N(tg,'out')}</div><div style='margin-top:6px;font-size:22px'>${N(ti-tg,ti-tg<0?'out':'in')}</div>${ti-tg<0?`<div class='mu out'>Has gastado ${eur(tg-ti)} más de lo que has ingresado</div>`:''}</div>
+ const bk=new Set(S.folders.filter(f=>f.kind==='banco').map(f=>f.id)),BM=S.movs.filter(x=>bk.has(x.folder)),bi=sum(BM,'ingreso'),bg=sum(BM,'gasto');
+ $('gen').innerHTML=`<div class='card'><b>Balance total</b><div class='mu'>Efectivo + todos los bancos</div><div class='mu' style='margin-top:6px'>Ingresos ${N(ti,'in')} · Gastos ${N(tg,'out')}</div><div style='margin-top:6px;font-size:22px'>${N(ti-tg,ti-tg<0?'out':'in')}</div>${ti-tg<0?`<div class='mu out'>Has gastado ${eur(tg-ti)} más de lo que has ingresado</div>`:''}</div>
+ <div class='card'><b>Solo bancos</b><div class='mu'>Suma de las cuentas bancarias</div><div class='mu' style='margin-top:6px'>Ingresos ${N(bi,'in')} · Gastos ${N(bg,'out')}</div><div style='margin-top:6px;font-size:22px'>${N(bi-bg,bi-bg<0?'out':'in')}</div></div>
  <div class='card'><b>Últimos 6 meses</b> <span class='mu'><span class='in'>●</span> ingresos <span class='out'>●</span> gastos</span>${chart()}</div>`;
- $('folders').innerHTML=S.folders.map(f=>{
+ $('folders').innerHTML=vis().map(f=>{
   const FM=S.movs.filter(x=>x.folder===f.id),gi=sum(FM,'ingreso'),gg=sum(FM,'gasto');
   const mm=new Set(FM.filter(x=>x.type==='gasto').map(x=>x.date.slice(0,7))).size;
   const est=f.goal&&gg>0&&gg<f.goal?Math.ceil((f.goal-gg)/(gg/mm)):0;
-  return `<div class="card" style="border-left:5px solid ${fc(f.id)}"><div class="mov" style="border:0;padding:0"><b>${esc(f.name)}</b>${f.id==='general'?'':`<button class="x" data-df="${f.id}" aria-label="Borrar carpeta">✕</button>`}</div>
+  return `<div class="card" style="border-left:5px solid ${fc(f.id)}"><div class="mov" style="border:0;padding:0"><b>${esc(f.name)}</b>${f.id==='general'?'':`<div><button class="chip" style="padding:4px 10px;font-size:12px" data-kind="${f.id}">${f.kind==='efectivo'?'💶 Efectivo':'🏦 Banco'}</button><button class="x" data-df="${f.id}" aria-label="Borrar cuenta">✕</button></div>`}</div>
   <div class='mu' style='margin-top:6px'>Ingresos ${N(gi,'in')} · Gastos ${N(gg,'out')}</div>
   <div style='margin-top:6px'>Balance: ${N(gi-gg,gi-gg<0?'out':'in')}</div>
   ${gi-gg<0?`<div class='mu out'>Más gastos que ingresos: ${eur(gg-gi)}</div>`:''}
@@ -307,7 +312,7 @@ function catView(L){
   T.forEach(x=>by[x.cat||'']=(by[x.cat||'']||0)+x.amount);
   const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
   return `<div class='card'><b>${title}</b> <span class='mu'>${eur(tot)}</span>`+(rows.length?rows.map(([id,v])=>{const c=catById(id)||{e:'•',name:'Sin categoría'};return `<div class='cr'><span class='ce'>${c.e}</span><div style='flex:1'><div class='cn'><span>${esc(c.name)}</span><b>${eur(v)}</b></div><div class='bar'><i style='width:0;background:${col}' data-w='${v/tot*100}'></i></div></div></div>`}).join(''):`<div class='empty'>Sin ${t==='gasto'?'gastos':'ingresos'} en este periodo</div>`)+`</div>`};
- return `<div class='mu' style='margin:0 0 10px'>Según el mes y la carpeta que tengas filtrados arriba</div>`+blk('gasto','En qué gastas','var(--out)')+blk('ingreso','De dónde ingresas','var(--in)');
+ return `<div class='mu' style='margin:0 0 10px'>Según el mes y la cuenta que tengas filtrados arriba</div>`+blk('gasto','En qué gastas','var(--out)')+blk('ingreso','De dónde ingresas','var(--in)');
 }
 function refresh(){opts();render()}
 function setTab(n){st=true;$('ind').style.transform='translateX('+(n-1)*100+'%)';[1,2,3].forEach(i=>{$('v'+i).hidden=i!==n;$('t'+i).className=i===n?'on':''});$('add').hidden=n!==1;if(n>1)render()}
@@ -315,7 +320,7 @@ function drawCats(){$('cats').innerHTML=S.cats[tipo].map(c=>`<button class="chip
 function setTipo(t){tipo=t;cat='';drawCats();$('sg').className=t==='gasto'?'on':'';$('si').className=t==='ingreso'?'on':''}
 $('t1').onclick=()=>setTab(1);$('t2').onclick=()=>setTab(2);$('t3').onclick=()=>setTab(3);
 $('sg').onclick=()=>setTipo('gasto');$('si').onclick=()=>setTipo('ingreso');
-$('add').onclick=()=>{$('a').value='';$('c').value='';$('d').value=today();const f=$('ff').value;$('f').value=S.folders.some(x=>x.id===f)?f:'general';setTipo('gasto');$('sheet').hidden=false;$('a').focus()};
+$('add').onclick=()=>{$('a').value='';$('c').value='';$('d').value=today();const f=$('ff').value,fa=formAccs();$('f').value=fa.some(x=>x.id===f)?f:fa[0].id;setTipo('gasto');$('sheet').hidden=false;$('a').focus()};
 $('cancel').onclick=()=>$('sheet').hidden=true;
 $('sheet').onclick=e=>{if(e.target.id==='sheet')$('sheet').hidden=true};
 $('save').onclick=()=>{
@@ -327,18 +332,19 @@ $('save').onclick=()=>{
 };
 $('fadd').onclick=()=>{
  const n=$('fn').value.trim();if(!n)return;
- S.folders.push({id:uid(),name:n,goal:parseFloat($('fg').value)||0});
+ S.folders.push({id:uid(),name:n,kind:$('fk').value,goal:parseFloat($('fg').value)||0});
  $('fn').value='';$('fg').value='';save();buzz();refresh();
 };
 document.addEventListener('click',e=>{
  const d=e.target.dataset.d,df=e.target.dataset.df,dc=e.target.dataset.c;
- if(dc==='+'){const n=prompt('Nombre de la categoría (puedes empezar con un emoji)');if(n&&n.trim()){const id=(tipo==='gasto'?'g':'i')+uid();S.cats[tipo].push({id,e:'🏷️',name:n.trim()});cat=id;save();drawCats()}}
+ if(dc==='+'){const n=prompt('Nombre de la categoría (puedes empezar con un emoji)');if(n&&n.trim()){const id='c'+uid(),c={id,e:'🏷️',name:n.trim()};S.cats.gasto.push(c);S.cats.ingreso.push({...c});cat=id;save();drawCats()}}
  else if(dc){cat=cat===dc?'':dc;drawCats()}
+ const dk=e.target.dataset.kind;if(dk){const f=S.folders.find(x=>x.id===dk);if(f){f.kind=f.kind==='efectivo'?'banco':'efectivo';save();refresh()}}
  if(d){
   const m=S.movs.find(x=>x.id===d),row=$('r'+d);if(row)row.classList.add('gone');
   setTimeout(()=>{S.movs=S.movs.filter(x=>x.id!==d);save();refresh();toast('Movimiento borrado',()=>{S.movs.push(m);save();refresh()})},250);
  }
- if(df&&confirm('¿Borrar la carpeta? Sus movimientos pasarán a General.')){S.folders=S.folders.filter(x=>x.id!==df);S.movs.forEach(x=>{if(x.folder===df)x.folder='general'});save();refresh()}
+ if(df&&confirm('¿Borrar la cuenta? Sus movimientos pasarán a «Sin cuenta».')){S.folders=S.folders.filter(x=>x.id!==df);S.movs.forEach(x=>{if(x.folder===df)x.folder='general'});save();refresh()}
 });
 $('fm').onchange=$('ff').onchange=$('fc').onchange=$('q').oninput=render;
 $('exp').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download='gastos-'+today()+'.json';a.click()};
