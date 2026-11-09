@@ -347,6 +347,7 @@ const merge=(a,b)=>[...new Map([...a,...b].map(x=>[x.id,x])).values()];
 const reduced=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
 const shake=el=>{el.classList.remove('shk');void el.offsetWidth;el.classList.add('shk')};
 const N=(v,c)=>`<b class='${c||''}' data-n='${v}'>${mh(v)}</b>`;
+const pnum=v=>{v=String(v).trim().replace(/\s|€/g,'');if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');return parseFloat(v)};
 const parseTags=s=>[...new Set((s||'').split(/[\s,]+/).map(t=>t.replace(/^#+/,'').trim().toLowerCase()).filter(Boolean))].slice(0,8);
 
 // ----- categorías, apartados y cuentas -----
@@ -594,7 +595,7 @@ function rowHTML(x,k){
  const where=tr?chip('#3b7dd8',fname(x.from)+' → '+fname(x.to)):ap?chip(base,'Apartado'):chip(fc(x.folder),fname(x.folder));
  const tags=(x.tags||[]).map(t=>`<span class="tg">#${esc(t)}</span>`).join('');
  const amt=tr?`<b style="color:#3b7dd8">${eur(x.amount)}</b>`:`<b class="${x.type==='ingreso'?'in':'out'}">${x.type==='ingreso'?'+':'−'}${eur(x.amount)}</b>`;
- return `<div class="sw"><div class="swbg"></div><div class="mov${x.id===last?' new':AN?' st':''}" data-id="${x.id}" role="button" tabindex="0"${AN?` style="animation-delay:${Math.min(k,10)*45}ms"`:''}><div class="l"><i class="ic" style="background:${base}26">${tile}</i><div><b>${esc(title)}</b><small>${fdate(x.date)}${where}${tags}</small></div></div><div>${amt}${x.ph?`<span class="pc" data-ph="${x.id}" title="Ver ticket">📎</span>`:''}</div></div></div>`;
+ return `<div class="sw"><div class="swbg"></div><div class="mov${x.id===last?' new':AN?' st':''}" data-id="${esc(x.id)}" role="button" tabindex="0"${AN?` style="animation-delay:${Math.min(k,10)*45}ms"`:''}><div class="l"><i class="ic" style="background:${base}26">${tile}</i><div><b>${esc(title)}</b><small>${fdate(x.date)}${where}${tags}</small></div></div><div>${amt}${x.ph?`<span class="pc" data-ph="${x.id}" title="Ver ticket">📎</span>`:''}</div></div></div>`;
 }
 function render(){
  AN=st;
@@ -752,7 +753,7 @@ $('add').onclick=()=>openSheet({});
 $('del').onclick=()=>{const id=editId;$('sheet').hidden=true;if(id)delMov(id)};
 function delMov(id){
  const m=S.movs.find(x=>x.id===id);if(!m)return;
- const row=document.querySelector(`.mov[data-id="${id}"]`);if(row){row.style.transform='';row.classList.add('gone')}
+ const row=document.querySelector(`.mov[data-id="${CSS.escape(id)}"]`);if(row){row.style.transform='';row.classList.add('gone')}
  setTimeout(()=>{
   S.movs=S.movs.filter(x=>x.id!==id);if(m.rid&&!S.skip.includes(id))S.skip.push(id);
   save();refresh();
@@ -820,7 +821,7 @@ function adjAcc(id){
  const f=S.folders.find(z=>z.id===id);if(!f)return;
  const s=accStats(id),v=prompt(`¿Cuánto dinero tienes ahora mismo en «${f.name}»? (€)`,String(Math.round(s.saldo*100)/100).replace('.',','));
  if(v===null)return;
- const n=parseFloat(String(v).replace(',','.'));if(isNaN(n)){toast('Importe no válido');return}
+ const n=pnum(v);if(isNaN(n)){toast('Importe no válido');return}
  f.open=Math.round((n-(s.saldo-s.open))*100)/100;save();buzz();refresh();toast(`Saldo de «${esc(f.name)}» ajustado a ${eur(n)}`);
 }
 $('anew').onclick=()=>openAcc();
@@ -883,7 +884,7 @@ function setBud(id){
  const c=catById(id);if(!c)return;
  const v=prompt(`Presupuesto mensual para «${c.name}» (€). Déjalo vacío o en 0 para quitarlo:`,S.budgets[id]||'');
  if(v===null)return;
- const n=parseFloat(String(v).replace(',','.'));
+ const n=pnum(v);
  if(n>0)S.budgets[id]=Math.round(n*100)/100;else delete S.budgets[id];
  save();refresh();
 }
@@ -1218,7 +1219,7 @@ if('serviceWorker' in navigator){
 }
 if(ensureG())store();
 refresh();initCloud();remDraw();lockUI();remCheck();
-if(lkGet())lkOpen('unlock');
+if(lkGet())lkOpen('unlock');else lkClose();
 </script>
 </body>
 </html>
