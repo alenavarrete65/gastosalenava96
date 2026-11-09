@@ -1061,10 +1061,10 @@ let G=null,gref=null,gunsub=null,pend=null,spay='';
 const gcode=()=>{const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from(crypto.getRandomValues(new Uint8Array(10)),v=>A[v%32]).join('')};
 const r2=x=>Math.round(x*100)/100;
 function gcalc(){
- const n={a:0,b:0},paid={a:0,b:0},share={a:0,b:0};let tot=0;
- (G.exps||[]).forEach(e=>{const a=e.amount*e.pa/100,b=e.amount-a;tot+=e.amount;paid[e.payer]+=e.amount;share.a+=a;share.b+=b;n[e.payer]+=e.amount;n.a-=a;n.b-=b});
+ const n={a:0,b:0},paid={a:0,b:0},share={a:0,b:0};let tot=0,joint=0;
+ (G.exps||[]).forEach(e=>{if(e.payer==='c'){joint+=e.amount;return}const a=e.amount*e.pa/100,b=e.amount-a;tot+=e.amount;paid[e.payer]+=e.amount;share.a+=a;share.b+=b;n[e.payer]+=e.amount;n.a-=a;n.b-=b});
  (G.pays||[]).forEach(p=>{n[p.from]+=p.amount;n[p.to]-=p.amount});
- return{n,tot,paid,share};
+ return{n,tot,paid,share,joint};
 }
 function openShared(){
  $('sh').hidden=false;if(gunsub){gunsub();gunsub=null}G=null;
@@ -1086,13 +1086,13 @@ function drawShared(){
  const hi=net===0?'Estáis en paz ✓':net>0?`${esc(nm[ot])} te debe`:`Debes a ${esc(nm[ot])}`;
  const items=[...(G.exps||[]).map(x=>({...x,k:'e'})),...(G.pays||[]).map(x=>({...x,k:'p'}))].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
  const row=x=>x.k==='e'
-  ?`<div class='mov'><div class='l'><i class='ic gasto'>🧾</i><div><b>${esc(x.desc||'Gasto')}</b><small>${fdate(x.date)}<span class='ch'>Pagó ${esc(nm[x.payer])}</span></small></div></div><div><b>${eur(x.amount)}</b><small style='justify-content:flex-end'>tu parte ${eur(x.amount*(me==='a'?x.pa:100-x.pa)/100)}</small></div><button class='x' data-act='del' data-k='e' data-id='${x.id}' aria-label='Borrar'>✕</button></div>`
+  ?`<div class='mov'><div class='l'><i class='ic gasto'>🧾</i><div><b>${esc(x.desc||'Gasto')}</b><small>${fdate(x.date)}<span class='ch'>${x.payer==='c'?'🤝 Cuenta compartida':'Pagó '+esc(nm[x.payer])}</span></small></div></div><div><b>${eur(x.amount)}</b><small style='justify-content:flex-end'>${x.payer==='c'?'50/50 · nadie debe':'tu parte '+eur(x.amount*(me==='a'?x.pa:100-x.pa)/100)}</small></div><button class='x' data-act='del' data-k='e' data-id='${x.id}' aria-label='Borrar'>✕</button></div>`
   :`<div class='mov'><div class='l'><i class='ic ingreso'>💸</i><div><b>${esc(nm[x.from])} pagó a ${esc(nm[x.to])}</b><small>${fdate(x.date)}</small></div></div><div><b class='in'>${eur(x.amount)}</b></div><button class='x' data-act='del' data-k='p' data-id='${x.id}' aria-label='Borrar'>✕</button></div>`;
  const id=S.grp.id;
  o.innerHTML=`<div class='card' style='background:var(--tx);color:var(--bg);border:0'>
  <div style='opacity:.75'>${hi}</div>
  ${net?`<b data-n='${Math.abs(net)}' style='display:block;font:700 44px/1.15 "Bricolage Grotesque",system-ui;letter-spacing:-.03em;font-variant-numeric:tabular-nums'>${eur(Math.abs(net))}</b><button data-act='settle' style='margin-top:12px;background:var(--bg);color:var(--tx)'>Marcar como pagado</button>`:''}
- <div style='opacity:.7;font-size:13px;margin-top:12px'>Gasto total ${eur(c.tot)} · Has pagado ${eur(c.paid[me])} · Tu parte ${eur(c.share[me])}</div></div>
+ <div style='opacity:.7;font-size:13px;margin-top:12px'>Gasto total ${eur(c.tot)} · Has pagado ${eur(c.paid[me])} · Tu parte ${eur(c.share[me])}${c.joint?` · Cuenta compartida ${eur(c.joint)}`:''}</div></div>
  <button class='pri' data-act='add' style='width:100%;margin-bottom:14px'>＋ Nuevo gasto compartido</button>
  <div class='card'>${items.length?items.map(row).join(''):"<div class='empty'>Aún no hay gastos compartidos</div>"}</div>
  <div class='card'><b>Grupo</b><div class='mu'>Código para que tu pareja se una</div><div style='font:700 24px "Bricolage Grotesque",system-ui;letter-spacing:.08em;margin:6px 0 12px'>${id.slice(0,5)}-${id.slice(5)}</div><div class='row'><button data-act='copy'>Copiar código</button><button data-act='leave'>Salir del grupo</button></div></div>`;
@@ -1100,8 +1100,9 @@ function drawShared(){
 }
 function drawSp(){
  const me=S.grp.me,ot=me==='a'?'b':'a',nm=G.names,v=+$('sp').value,a=parseFloat($('sa').value)||0;
- $('spay').innerHTML=[me,ot].map(i=>`<button class='chip${spay===i?' on':''}' data-py='${i}'>${i===me?'Yo':esc(nm[i])}</button>`).join('');
- $('slab').textContent=`Yo ${v}% (${eur(a*v/100)}) · ${nm[ot]} ${100-v}% (${eur(a*(100-v)/100)})`;
+ $('spay').innerHTML=[me,ot,'c'].map(i=>`<button class='chip${spay===i?' on':''}' data-py='${i}'>${i===me?'Yo':i==='c'?'🤝 Cuenta compartida':esc(nm[i])}</button>`).join('');
+ const jt=spay==='c';$('sp').hidden=jt;$('spre').hidden=jt;
+ $('slab').textContent=jt?'se paga 50/50 desde la cuenta compartida · nadie debe nada':`Yo ${v}% (${eur(a*v/100)}) · ${nm[ot]} ${100-v}% (${eur(a*(100-v)/100)})`;
  $('spre').innerHTML=[50,60,70,100,0].map(p=>`<button class='chip${v===p?' on':''}' data-pr='${p}'>${p}/${100-p}</button>`).join('');
 }
 $('shb').onclick=openShared;
@@ -1115,7 +1116,7 @@ $('ssh').onclick=e=>{
 };
 $('ssv').onclick=()=>{
  const a=parseFloat($('sa').value);if(!(a>0)){$('sa').focus();return}
- const v=+$('sp').value,x={id:uid(),desc:$('sc').value.trim(),amount:a,date:$('sd').value||today(),payer:spay,pa:S.grp.me==='a'?v:100-v};
+ const v=+$('sp').value,x={id:uid(),desc:$('sc').value.trim(),amount:a,date:$('sd').value||today(),payer:spay,pa:spay==='c'?50:(S.grp.me==='a'?v:100-v)};
  $('ssh').hidden=true;buzz();
  M.FS.updateDoc(gref,{exps:M.FS.arrayUnion(x)}).catch(()=>toast('No se pudo guardar'));
 };
