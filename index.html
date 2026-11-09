@@ -75,7 +75,10 @@ label{display:block;font-size:13px;color:var(--mu);margin-top:12px;font-weight:6
 .row{display:flex;gap:8px}.row>*{flex:1}
 #cloud{flex:none;border-radius:999px;font-size:13px;padding:8px 12px}
 #cloud.w{border-color:#e8892b;color:#e8892b}#cloud.r{border-color:var(--out);color:var(--out)}#cloud.n{border-color:var(--in);color:var(--in)}
-#cls{position:fixed;inset:0;background:#0008;backdrop-filter:blur(5px);z-index:24;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
+#svb{position:fixed;left:18px;right:164px;bottom:calc(18px + env(safe-area-inset-bottom,0px));height:56px;border-radius:30px;border:0;background:#e8892b;color:#fff;font-size:17px;font-weight:800;letter-spacing:-.01em;z-index:10;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;white-space:nowrap;animation:blinkb 1.4s ease-in-out infinite}
+#svb.r{background:var(--out)}#svb[disabled]{animation:none;opacity:.7}
+@keyframes blinkb{0%,100%{box-shadow:0 0 0 0 #e8892bcc,0 14px 28px -10px #000a;transform:scale(1);filter:brightness(1)}50%{box-shadow:0 0 0 13px #e8892b00,0 14px 28px -10px #000a;transform:scale(1.05);filter:brightness(1.18)}}
+#cls{position:fixed;left:0;right:0;top:var(--vt,0px);height:var(--vh,100%);background:#0008;backdrop-filter:blur(5px);z-index:24;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
 #cls>.card{width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
 .cbx{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;flex:1}.cbx b{display:block;font-size:20px}.cbx.rec{border-color:var(--tx)}
 .tabs{position:relative;display:flex;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:4px;margin:16px 0}
@@ -114,10 +117,12 @@ label{display:block;font-size:13px;color:var(--mu);margin-top:12px;font-weight:6
 .seg button.on{color:#fff;border:0}
 #sg.on{background:#d8453b}#si.on{background:#1c8556}#str.on{background:#3b7dd8}
 .empty{color:var(--mu);text-align:center;padding:22px}
-#sheet,#ssh,#csh,#ash,#acm{position:fixed;inset:0;background:#0008;backdrop-filter:blur(5px);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
+#sheet,#ssh,#csh,#ash,#acm{position:fixed;left:0;right:0;top:var(--vt,0px);height:var(--vh,100%);background:#0008;backdrop-filter:blur(5px);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
 #csh{z-index:24}#ash{z-index:22}
 #acm{z-index:26}
-#sheet>.card,#ssh>.card,#csh>.card,#ash>.card,#acm>.card{width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
+#sheet>.card,#ssh>.card,#csh>.card,#ash>.card,#acm>.card{overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:46px;text-align:center}
+body:has(#sheet:not([hidden]),#ssh:not([hidden]),#csh:not([hidden]),#ash:not([hidden]),#acm:not([hidden]),#cls:not([hidden])){overflow:hidden}
 #a{font:700 28px "Bricolage Grotesque",system-ui}
 .apv{font:800 40px/1.1 "Bricolage Grotesque",system-ui;letter-spacing:-.03em;text-align:center;margin:12px 0 2px}
 .apv.in{color:var(--in)}.apv.out{color:var(--out)}.apv.trc{color:#3b7dd8}
@@ -172,7 +177,7 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 #pv img{max-width:100%;max-height:80vh;border-radius:12px}
 #lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px}
 .lk #lock,.lko #lock{display:flex}
-.lk main,.lk .fab,.lk #mini,.lk #sh{visibility:hidden}
+.lk main,.lk .fab,.lk #svb,.lk #mini,.lk #sh{visibility:hidden}
 .lt{font:700 20px "Bricolage Grotesque",system-ui}
 .dots{display:flex;gap:16px}
 .dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--tx);transition:background .15s,transform .15s}
@@ -275,6 +280,7 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 <div class="row" style="margin-top:16px"><button id="scx">Cancelar</button><button class="pri" id="ssv">Guardar</button></div>
 </div></div>
 <div id="acm" hidden><div class="card"><b id="acmt" style="font-size:18px"></b><div class="mu" id="acmm" style="margin-top:6px"></div><label id="acml"></label><select id="acms"></select><div class="row" style="margin-top:16px"><button id="acmx">Cancelar</button><button class="pri" id="acmok">Confirmar</button></div></div></div>
+<button id="svb" hidden></button>
 <div id="cls" hidden><div class="card" id="clc"></div></div>
 <div id="toast" hidden></div>
 
@@ -1269,6 +1275,13 @@ function cloudBtn(){
  const b=$('cloud'),k=cst();
  const T={out:['☁️ Iniciar sesión',''],load:['☁️ …',''],err:[SY.dirty?'☁️ Sin guardar':'☁️ Sin conexión',SY.dirty?'w':''],none:['☁️ Guardar','w'],ok:['☁️ Al día','n'],dirty:['☁️ Sin guardar','w'],newer:['☁️ ⬇ Hay nueva','w'],conflict:['☁️ ⚠️ Revisar','r'],link:['☁️ Revisar','r']}[k];
  b.textContent=T[0];b.className=T[1];
+ const v=$('svb'),u=auth&&auth.currentUser;
+ const sv=u&&SY.dirty&&(k==='dirty'||k==='load'||k==='err');
+ const nn=u&&k==='none'&&S.movs.length>0;
+ const rv=u&&(k==='conflict'||k==='link');
+ v.hidden=!(sv||nn||rv||(u&&cbusy));
+ v.className=rv?'r':'';v.disabled=!!cbusy;
+ v.textContent=cbusy?'Guardando…':rv?'⚠️ Revisar la nube':'☁️ Guardar cambios';
 }
 async function cloudCheck(init){
  if(!ref)return;const my=ref;
@@ -1308,7 +1321,7 @@ function drawCloud(){
 async function cloudPush(){
  if(!ref||cbusy)return;
  if(CL&&CL.v>SY.base&&SY.base&&!confirm(`La nube tiene una versión más nueva (${ftime(CL.t)}${CL.dev?' desde '+CL.dev:''}, ${CL.n} movimientos). Si guardas ahora, se SOBRESCRIBE con la de este dispositivo (${S.movs.length} movimientos). ¿Sobrescribir?`))return;
- cbusy=true;drawCloud();
+ cbusy=true;cloudBtn();drawCloud();
  try{
   const dev=devName(),force=!!(CL&&CL.v>SY.base&&SY.base);
   const base=SY.base;
@@ -1363,6 +1376,7 @@ $('cloud').onclick=async()=>{
  if(auth.currentUser)openCloud();
  else{try{await AU.signInWithPopup(auth,new AU.GoogleAuthProvider())}catch(e){toast('No se pudo iniciar sesión')}}
 };
+$('svb').onclick=()=>{const k=cst();if(k==='conflict'||k==='link')openCloud();else cloudPush()};
 $('cls').onclick=e=>{
  if(e.target.id==='cls'){$('cls').hidden=true;return}
  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
@@ -1373,6 +1387,14 @@ $('cls').onclick=e=>{
  if(a==='out'&&confirm(SY.dirty?'Tienes cambios SIN GUARDAR en este dispositivo. Si cierras sesión siguen aquí, pero no estarán en la nube. ¿Cerrar sesión?':'¿Cerrar sesión? Tus datos seguirán en la nube y en este dispositivo.')){$('cls').hidden=true;M.AU.signOut(auth)}
 };
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ref)cloudCheck()});
+// ----- teclado en móvil: las hojas se ajustan a la parte visible de la pantalla -----
+(function(){const vv=window.visualViewport;if(!vv)return;
+ const fit=()=>{const r=document.documentElement.style;r.setProperty('--vh',vv.height+'px');r.setProperty('--vt',vv.offsetTop+'px')};
+ vv.addEventListener('resize',fit);vv.addEventListener('scroll',fit);fit();
+ document.addEventListener('focusin',e=>{const t=e.target;if(!t.closest||!t.closest('#sheet,#ssh,#csh,#ash,#acm'))return;
+  setTimeout(()=>{fit();try{t.scrollIntoView({block:'center',behavior:'smooth'})}catch(x){}},320)});
+ document.addEventListener('focusout',()=>setTimeout(()=>{fit();if(!document.activeElement||document.activeElement===document.body)window.scrollTo(0,0)},120));
+})();
 if('serviceWorker' in navigator){
  let swr=null,ver=null,busy=false;
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>swr=r).catch(()=>{});
