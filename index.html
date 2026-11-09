@@ -356,6 +356,10 @@ const ym0=()=>today().slice(0,7);
 const mlabel=m=>MES[+m.slice(5)-1]+' '+m.slice(0,4);
 const hash=s=>[...String(s)].reduce((h,c)=>(h*31+c.charCodeAt(0))|0,7)>>>0;
 const sum=(L,t)=>L.filter(x=>x.type===t).reduce((s,x)=>s+x.amount,0);
+// la cuenta conjunta no es tuya: una transferencia DESDE ella hacia tus cuentas cuenta como ingreso y una transferencia HACIA ella como gasto
+const isJ=id=>{const f=S.folders.find(z=>z.id===id);return !!f&&f.kind==='conjunta'};
+const jt=x=>{if(x.type!=='transfer'||x.from==='pareja'||x.to==='pareja')return null;const a=isJ(x.from),b=isJ(x.to);if(a&&!b)return'ingreso';if(b&&!a)return'gasto';return null};
+const esum=(L,t)=>sum(L,t)+L.filter(x=>jt(x)===t).reduce((s,x)=>s+x.amount,0);
 const buzz=()=>navigator.vibrate&&navigator.vibrate(12);
 const merge=(a,b)=>[...new Map([...a,...b].map(x=>[x.id,x])).values()];
 const reduced=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -396,14 +400,14 @@ function shFlows(){
  return out;
 }
 function accStats(id){
- const A=apSet();let i=0,g=0,ti=0,to=0;
+ const A=apSet();let i=0,g=0,ti=0,to=0,xi=0,xg=0;
  S.movs.forEach(x=>{
-  if(x.type==='transfer'){if(x.to===id)ti+=x.amount;if(x.from===id)to+=x.amount}
+  if(x.type==='transfer'){if(x.to===id)ti+=x.amount;if(x.from===id)to+=x.amount;const t=jt(x);if(t==='ingreso'&&x.to===id)xi+=x.amount;if(t==='gasto'&&x.from===id)xg+=x.amount}
   else if(x.folder===id&&!isAp(x,A)){if(x.type==='ingreso')i+=x.amount;else g+=x.amount}
  });
  shFlows().forEach(f=>{if(f.acc===id){if(f.amt<0)g-=f.amt;else i+=f.amt}});
  const f=S.folders.find(z=>z.id===id)||{},open=f.open||0;
- return{i,g,ti,to,open,saldo:open+i-g+ti-to};
+ return{i,g,ti,to,xi,xg,open,saldo:open+i-g+ti-to};
 }
 function apStats(id){
  let i=0,g=0,n=0;
@@ -523,7 +527,7 @@ function filtered(){
 function barsCard(){
  const G=gm(),now=new Date(),ms=[];
  for(let k=5;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);ms.push(d.getFullYear()+'-'+pad(d.getMonth()+1))}
- const v=ms.map(m=>{const L=G.filter(x=>x.date.startsWith(m));return[sum(L,'ingreso'),sum(L,'gasto')]});
+ const v=ms.map(m=>{const L=G.filter(x=>x.date.startsWith(m));return[esum(L,'ingreso'),esum(L,'gasto')]});
  const mx=Math.max(1,...v.flat());
  const svg=`<svg viewBox='0 0 300 120' width='100%' role='img' aria-label='Ingresos y gastos de los últimos 6 meses'>`+ms.map((m,i)=>{
   const x=i*50+7;
@@ -534,8 +538,8 @@ function barsCard(){
 function evoCard(){
  const G=gm(),now=new Date(),ms=[];
  for(let k=11;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);ms.push(d.getFullYear()+'-'+pad(d.getMonth()+1))}
- const base=S.folders.reduce((s,f)=>s+(f.open||0),0);
- const v=ms.map(m=>{const e=m+'-31';let s=base;G.forEach(x=>{if(x.date>e)return;if(x.type==='transfer'){if(x.from==='pareja')s+=x.amount}else s+=x.type==='ingreso'?x.amount:-x.amount});shFlows().forEach(f=>{if(f.date<=e)s+=f.amt});return s});
+ const base=S.folders.reduce((s,f)=>s+(f.kind==='conjunta'?0:(f.open||0)),0);
+ const v=ms.map(m=>{const e=m+'-31';let s=base;G.forEach(x=>{if(x.date>e)return;if(x.type==='transfer'){const t=jt(x);if(t)s+=t==='ingreso'?x.amount:-x.amount}else if(!isJ(x.folder))s+=x.type==='ingreso'?x.amount:-x.amount});shFlows().forEach(f=>{if(f.date<=e&&!isJ(f.acc))s+=f.amt});return s});
  const mn=Math.min(...v),mx=Math.max(...v),rg=(mx-mn)||1,W=300,H=120,l=12,r=12,t=20,b=22;
  const px=i=>l+i*(W-l-r)/(v.length-1),py=y=>(mx===mn)?(t+(H-t-b)/2):t+(H-t-b)*(1-(y-mn)/rg);
  const pts=v.map((y,i)=>[px(i),py(y)]);
@@ -551,9 +555,9 @@ function evoCard(){
 }
 function totCards(){
  let tot=0,bank=0,ti=0,tg=0,bi=0,bg=0;
- S.folders.forEach(f=>{const s=accStats(f.id);tot+=s.saldo;ti+=s.i;tg+=s.g;if(f.kind==='banco'||f.kind==='conjunta'){bank+=s.saldo;bi+=s.i;bg+=s.g}});
+ S.folders.forEach(f=>{const s=accStats(f.id),j=f.kind==='conjunta';if(!j){tot+=s.saldo;ti+=s.i+s.xi;tg+=s.g+s.xg}if(f.kind==='banco'||j){bank+=s.saldo;bi+=s.i+s.xi;bg+=s.g+s.xg}});
  const card=(t,sub,v,i,g)=>`<div class="card"><div class="eb">${t}</div><div class="mu">${sub}</div><div class="tv">${N(v,v<0?'out':'')}</div><div class="mu">↗ ${N(i,'in')}</div><div class="mu">↙ ${N(g,'out')}</div></div>`;
- return `<div class="tot">${card('Total','Efectivo + bancos',tot,ti,tg)}${card('Solo bancos','Incluye la conjunta',bank,bi,bg)}</div><div class="mu" style="margin:-2px 0 12px">Los apartados independientes no cuentan aquí.</div>`;
+ return `<div class="tot">${card('Total','Efectivo + bancos (sin la conjunta)',tot,ti,tg)}${card('Solo bancos','Incluye la conjunta',bank,bi,bg)}</div><div class="mu" style="margin:-2px 0 12px">Los apartados independientes no cuentan aquí.</div>`;
 }
 function accCard(f,k){
  const s=accStats(f.id),c=fc(f.id),gen=f.id==='general';
@@ -636,12 +640,13 @@ function rowHTML(x,k){
  const title=tr?(x.concept||(x.from==='pareja'?'Aportación de pareja':'Transferencia')):(x.concept||(c||{}).name||(x.type==='gasto'?'Gasto':'Ingreso'));
  const where=tr?chip('#3b7dd8',fname(x.from)+' → '+fname(x.to)):ap?chip(base,'Apartado'):chip(fc(x.folder),fname(x.folder));
  const tags=(x.tags||[]).map(t=>`<span class="tg">#${esc(t)}</span>`).join('');
- const amt=tr?`<b style="color:#3b7dd8">${eur(x.amount)}</b>`:`<b class="${x.type==='ingreso'?'in':'out'}">${x.type==='ingreso'?'+':'−'}${eur(x.amount)}</b>`;
+ const tj=tr?jt(x):null;
+ const amt=tr?(tj?`<b class="${tj==='ingreso'?'in':'out'}">${tj==='ingreso'?'+':'−'}${eur(x.amount)}</b>`:`<b style="color:#3b7dd8">${eur(x.amount)}</b>`):`<b class="${x.type==='ingreso'?'in':'out'}">${x.type==='ingreso'?'+':'−'}${eur(x.amount)}</b>`;
  return `<div class="sw"><div class="swbg"></div><div class="mov${x.id===last?' new':AN?' st':''}" data-id="${esc(x.id)}" role="button" tabindex="0"${AN?` style="animation-delay:${Math.min(k,10)*45}ms"`:''}><div class="l"><i class="ic" style="background:${base}26">${tile}</i><div><b>${esc(title)}</b><small>${fdate(x.date)}${where}${tags}</small></div></div><div>${amt}${x.ph?`<span class="pc" data-ph="${x.id}" title="Ver ticket">📎</span>`:''}</div></div></div>`;
 }
 function render(){
  AN=st;
- const L=filtered(),i=sum(L,'ingreso'),g=sum(L,'gasto'),fcv=$('fc').value,cs=apSet().has(fcv)?catById(fcv):null;
+ const L=filtered(),i=esum(L,'ingreso'),g=esum(L,'gasto'),fcv=$('fc').value,cs=apSet().has(fcv)?catById(fcv):null;
  tween($('sI'),i);tween($('sG'),g);tween($('sB'),i-g);
  $('sB').className=i-g<0?'out':'in';
  const fmv=$('fm').value;
