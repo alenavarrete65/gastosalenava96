@@ -293,7 +293,7 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 <b id="aht" style="font-size:18px">Nueva cuenta</b>
 <label>Nombre</label><input id="an" placeholder="Ej. Efectivo, BBVA, Santander">
 <label>Tipo</label><div class="chips" id="akc"></div>
-<label>Saldo inicial (€)</label><input id="ao" type="number" inputmode="decimal" step="0.01" placeholder="0,00">
+<label id="aol">Dinero que tienes ahora (€)</label><input id="ao" type="number" inputmode="decimal" step="0.01" placeholder="0,00">
 <label>Objetivo total (opcional, para gastos a largo plazo)</label><input id="ag" type="number" inputmode="decimal" min="0" step="0.01" placeholder="€">
 <label>Color</label><div class="chips" id="acl"></div>
 <div class="row" style="margin-top:16px"><button id="acx">Cancelar</button><button id="adl" class="dng" hidden>Borrar</button><button class="pri" id="asv">Guardar</button></div>
@@ -521,6 +521,7 @@ function accCard(f,k){
  <div class="ah"><i class="ai">${f.kind==='efectivo'?'💶':gen?'📦':'🏦'}</i><div style="flex:1;min-width:0"><div class="an">${esc(f.name)}</div><small>${f.kind==='efectivo'?'Efectivo':gen?'Sin asignar':'Banco'}</small></div>${gen?'':`<button data-ea="${f.id}" aria-label="Editar cuenta">✏️</button>`}</div>
  <div class="ab">${N(s.saldo,s.saldo<0?'ng':'')}</div>
  <small>↗ ${eur(s.i)} · ↙ ${eur(s.g)}${s.ti||s.to?` · ⇄ ${eur(s.ti-s.to)}`:''}${s.open?` · inicial ${eur(s.open)}`:''}</small>
+ ${gen?'':`<div class="acts" style="margin-top:8px"><button data-adj="${f.id}">💰 Ajustar saldo real</button></div>`}
  ${f.goal?`<div class="bar"><i style="width:0" data-w="${Math.min(100,s.g/f.goal*100)}"></i></div><small>Pagado ${eur(s.g)} de ${eur(f.goal)} · faltan ${eur(Math.max(0,f.goal-s.g))}</small>`:''}
  ${est?`<div><small>A este ritmo: ~${est} ${est===1?'mes':'meses'} para terminar</small></div>`:''}</div>`;
 }
@@ -797,7 +798,14 @@ function openAcc(id){
  akind=f?f.kind:'banco';acol=f&&f.color?f.color:'';
  $('aht').textContent=f?'Editar cuenta':'Nueva cuenta';
  $('an').value=f?f.name:'';$('ao').value=f&&f.open?f.open:'';$('ag').value=f&&f.goal?f.goal:'';
- $('adl').hidden=!f;aDraw();$('ash').hidden=false;if(!f)$('an').focus();
+ $('aol').textContent=f?'Saldo inicial (€) · lo que había antes de apuntar movimientos':'Dinero que tienes ahora en esta cuenta (€)';$('adl').hidden=!f;aDraw();$('ash').hidden=false;if(!f)$('an').focus();
+}
+function adjAcc(id){
+ const f=S.folders.find(z=>z.id===id);if(!f)return;
+ const s=accStats(id),v=prompt(`¿Cuánto dinero tienes ahora mismo en «${f.name}»? (€)`,String(Math.round(s.saldo*100)/100).replace('.',','));
+ if(v===null)return;
+ const n=parseFloat(String(v).replace(',','.'));if(isNaN(n)){toast('Importe no válido');return}
+ f.open=Math.round((n-(s.saldo-s.open))*100)/100;save();buzz();refresh();toast(`Saldo de «${esc(f.name)}» ajustado a ${eur(n)}`);
 }
 $('anew').onclick=()=>openAcc();
 $('atr').onclick=()=>{if(formAccs().length<2){toast('Crea al menos dos cuentas para transferir');return}openSheet({type:'transfer'})};
@@ -883,6 +891,7 @@ document.addEventListener('click',e=>{
  if(el=q('[data-ccol]')){ccolor=ccolor===el.dataset.ccol?'':el.dataset.ccol;cDraw();return}
  if(el=q('[data-tag]')){ftag=el.dataset.tag;opts();render();return}
  if(el=q('[data-ea]')){openAcc(el.dataset.ea);return}
+ if(el=q('[data-adj]')){adjAcc(el.dataset.adj);return}
  if(el=q('[data-cedit]')){openCat({id:el.dataset.cedit});return}
  if(el=q('[data-cnew]')){openCat({ap:el.dataset.cnew==='ap'});return}
  if(el=q('[data-apadd]')){openSheet({cat:el.dataset.apadd});return}
