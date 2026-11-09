@@ -32,3 +32,12 @@ Abre la URL en cada dispositivo, pulsa **☁️ Iniciar sesión** con la misma c
 ## Gastos compartidos con tu pareja (reglas nuevas)
 Si ya habías publicado las reglas antes, vuelve a **Firestore → Reglas**, pega el contenido nuevo de `firestore.rules` y pulsa **Publicar**. Sin esto, el botón «👥 Pareja» no podrá crear ni unirse a grupos.
 Si reutilizas el proyecto de OpoTest, AÑADE el bloque `match /grupos/{gid}` a tus reglas en vez de reemplazarlas.
+
+## Novedades de esta versión
+- **Cuentas** (antes «Carpetas»): efectivo y bancos con saldo inicial, tarjetas de color, transferencias entre cuentas y totales «Total» / «Solo bancos».
+- **Apartados independientes** (Categorías → «＋ Nuevo apartado»): como «Autoescuela». Llevan su propio saldo y NO cuentan en el saldo general ni en las cuentas. Puedes crear los que quieras.
+- Editar movimientos (toca uno) y deslizar: derecha = editar, izquierda = borrar.
+- Recurrentes, presupuestos por categoría, comparativa mensual, etiquetas, gráficos, exportar CSV.
+- Fotos de tickets: se guardan solo en el dispositivo donde se hacen (no se sincronizan, por el límite de tamaño de Firestore).
+- Bloqueo con PIN y huella / Face ID, recordatorio diario, negro puro y color de acento (pestaña «Más»).
+- No hace falta tocar las reglas de Firestore: siguen igual.
