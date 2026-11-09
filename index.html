@@ -465,9 +465,10 @@ function toast(msg,fn){
 }
 
 // ----- filtros -----
+let fmInit=false;
 function opts(){
- const months=[...new Set(S.movs.map(m=>m.date.slice(0,7)))].sort().reverse();
- const cm=$('fm').value,cf=$('ff').value,cc=$('fc').value;
+ const months=[...new Set([...S.movs.map(m=>m.date.slice(0,7)),ym0()])].sort().reverse();
+ const cm=fmInit?$('fm').value:ym0(),cf=$('ff').value,cc=$('fc').value;fmInit=true;
  $('fm').innerHTML='<option value="">Todos los meses</option>'+months.map(m=>`<option value="${m}">${mlabel(m)}</option>`).join('');
  $('fm').value=months.includes(cm)?cm:'';
  const op=a=>a.map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');
@@ -626,7 +627,8 @@ function render(){
  const L=filtered(),i=sum(L,'ingreso'),g=sum(L,'gasto'),fcv=$('fc').value,cs=apSet().has(fcv)?catById(fcv):null;
  tween($('sI'),i);tween($('sG'),g);tween($('sB'),i-g);
  $('sB').className=i-g<0?'out':'in';
- $('hlab').textContent=cs?`Saldo de ${cs.name}`:'Balance';
+ const fmv=$('fm').value;
+ $('hlab').textContent=cs?`Saldo de ${cs.name}`:(fmv?'Balance de '+mlabel(fmv):'Balance');
  $('mbal').innerHTML=mh(i-g);$('mbal').className=i-g<0?'out':'in';
  $('list').innerHTML=L.length?L.map((x,k)=>rowHTML(x,k)).join(''):'<div class="empty">Aún no hay movimientos. Pulsa «+ Añadir».</div>';
  last='';st=false;
