@@ -41,3 +41,12 @@ Si reutilizas el proyecto de OpoTest, AÑADE el bloque `match /grupos/{gid}` a t
 - Fotos de tickets: se guardan solo en el dispositivo donde se hacen (no se sincronizan, por el límite de tamaño de Firestore).
 - Bloqueo con PIN y huella / Face ID, recordatorio diario, negro puro y color de acento (pestaña «Más»).
 - No hace falta tocar las reglas de Firestore: siguen igual.
+
+## Sincronización manual (nueva)
+La app NUNCA sube nada sola: solo guarda cuando pulsas «Guardar». Al abrirla (o volver a ella), si no tienes cambios sin guardar y hay una versión más nueva en la nube, la carga sola. Si tienes cambios sin guardar y la nube también cambió, te pregunta. Toca el botón ☁️ de arriba:
+- **⬆️ Guardar en la nube**: sube lo de este dispositivo y sustituye la copia de la nube.
+- **⬇️ Cargar de la nube**: trae la copia de la nube y sustituye lo de este dispositivo (con «Deshacer»).
+- El panel muestra, para cada lado, nº de movimientos y fecha/dispositivo del último guardado.
+- Si la nube tiene una versión más nueva que la tuya, te avisa antes de sobrescribir.
+- Estados del botón: Al día · Sin guardar · Hay nueva · Revisar.
+- Las reglas de Firestore siguen igual. Sube `index.html` y `sw.js` a GitHub.

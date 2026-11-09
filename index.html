@@ -74,6 +74,10 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--ac);outlin
 label{display:block;font-size:13px;color:var(--mu);margin-top:12px;font-weight:600;letter-spacing:.01em}
 .row{display:flex;gap:8px}.row>*{flex:1}
 #cloud{flex:none;border-radius:999px;font-size:13px;padding:8px 12px}
+#cloud.w{border-color:#e8892b;color:#e8892b}#cloud.r{border-color:var(--out);color:var(--out)}#cloud.n{border-color:var(--in);color:var(--in)}
+#cls{position:fixed;inset:0;background:#0008;backdrop-filter:blur(5px);z-index:24;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
+#cls>.card{width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
+.cbx{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;flex:1}.cbx b{display:block;font-size:20px}.cbx.rec{border-color:var(--tx)}
 .tabs{position:relative;display:flex;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:4px;margin:16px 0}
 .tabs button{flex:1;background:none;border:0;position:relative;z-index:1;font-weight:700;color:var(--mu);transition:color .3s,transform .18s;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 2px;font-size:11.5px;line-height:1.1;box-shadow:none}
 .tabs button i{font-style:normal;font-size:17px}
@@ -271,6 +275,7 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 <div class="row" style="margin-top:16px"><button id="scx">Cancelar</button><button class="pri" id="ssv">Guardar</button></div>
 </div></div>
 <div id="acm" hidden><div class="card"><b id="acmt" style="font-size:18px"></b><div class="mu" id="acmm" style="margin-top:6px"></div><label id="acml"></label><select id="acms"></select><div class="row" style="margin-top:16px"><button id="acmx">Cancelar</button><button class="pri" id="acmok">Confirmar</button></div></div></div>
+<div id="cls" hidden><div class="card" id="clc"></div></div>
 <div id="toast" hidden></div>
 
 <div id="sheet" hidden>
@@ -433,7 +438,13 @@ function ensureG(){
 }
 const store=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 const pure=()=>JSON.parse(JSON.stringify(S));
-function save(){store();if(ref)try{M.FS.setDoc(ref,pure()).catch(()=>{})}catch(e){}}
+function save(){store();setDirty(true)}
+// ----- estado de sincronización manual -----
+let SY={base:0,dirty:null,lt:0,st:0};
+try{const r=JSON.parse(localStorage.getItem('gastos-sync'));if(r)SY={...SY,...r}}catch(e){}
+if(SY.dirty===null)SY.dirty=(S.movs||[]).length>0; // primera vez con este sistema: no sabemos si coincide con la nube
+const ysave=()=>{try{localStorage.setItem('gastos-sync',JSON.stringify(SY))}catch(e){}};
+function setDirty(v){SY.dirty=v;if(v)SY.lt=Date.now();ysave();try{cloudBtn()}catch(e){}}
 
 // ----- animaciones -----
 function burst(t){
@@ -1081,7 +1092,7 @@ document.addEventListener('visibilitychange',()=>{
  if(document.hidden){hiddenAt=Date.now();return}
  if(lkGet()&&hiddenAt&&Date.now()-hiddenAt>30000&&!document.documentElement.classList.contains('lko'))lkOpen('unlock');
  remCheck();
- if(applyRec()){save();refresh()}
+ if(applyRec()){store();refresh()}
 });
 // ----- Gastos compartidos (pareja) -----
 let G=null,gref=null,gunsub=null,pend=null,spay='';
@@ -1240,10 +1251,97 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)applyTheme
 setInterval(applyTheme,60000);drawTheme();
 
 // ----- Sincronización (Firebase) -----
-const setCloud=on=>$('cloud').textContent=on?'☁️ Sincronizado':'☁️ Iniciar sesión';
-function fromCloud(d,firstSync){
- if(firstSync)S={movs:merge(d.movs||[],S.movs),folders:merge(d.folders||[],S.folders),cats:d.cats||S.cats,grp:d.grp||S.grp,rec:merge(d.rec||[],S.rec||[]),skip:[...new Set([...(d.skip||[]),...(S.skip||[])])],budgets:{...(d.budgets||{}),...(S.budgets||{})},sh:{...(d.sh||{}),...(S.sh||{})}};
- else S={movs:d.movs||[],folders:d.folders||[],cats:d.cats||S.cats,grp:d.grp||S.grp,rec:d.rec||[],skip:d.skip||[],budgets:d.budgets||{},sh:d.sh||{}};
+let CL=null,cbusy=false;
+const ftime=t=>t?new Date(t).toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+const devName=()=>{const u=navigator.userAgent;return /iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':/Android/.test(u)?'Android':/Mac/.test(u)?'Mac':/Windows/.test(u)?'Windows':'otro dispositivo'};
+const cinfo=d=>({v:d._v||1,t:d._t||0,dev:d._dev||'',n:(d.movs||[]).length,nf:(d.folders||[]).filter(f=>f.id!=='general').length});
+// estado: out | none | ok | dirty | newer | conflict | link | err | load
+function cst(){
+ if(!auth||!auth.currentUser)return'out';
+ if(!CL)return'load';
+ if(CL.err)return'err';
+ if(CL.none)return'none';
+ if(!SY.base)return'link';
+ if(CL.v>SY.base)return SY.dirty?'conflict':'newer';
+ return SY.dirty?'dirty':'ok';
+}
+function cloudBtn(){
+ const b=$('cloud'),k=cst();
+ const T={out:['☁️ Iniciar sesión',''],load:['☁️ …',''],err:[SY.dirty?'☁️ Sin guardar':'☁️ Sin conexión',SY.dirty?'w':''],none:['☁️ Guardar','w'],ok:['☁️ Al día','n'],dirty:['☁️ Sin guardar','w'],newer:['☁️ ⬇ Hay nueva','w'],conflict:['☁️ ⚠️ Revisar','r'],link:['☁️ Revisar','r']}[k];
+ b.textContent=T[0];b.className=T[1];
+}
+async function cloudCheck(init){
+ if(!ref)return;const my=ref;
+ try{const s=await M.FS.getDocFromServer(my);if(my!==ref)return;CL=s.exists()?cinfo(s.data()):{none:true}}
+ catch(e){if(my!==ref)return;CL={err:true}}
+ cloudBtn();if(!$('cls').hidden)drawCloud();
+ const k=cst();
+ // sin cambios pendientes aquí y versión más nueva en la nube: se carga sola (no se pierde nada)
+ if(k==='newer'&&!cbusy){await cloudPull();return}
+ if(init&&(k==='link'||k==='conflict'))openCloud();
+}
+function openCloud(){$('cls').hidden=false;drawCloud();cloudCheck()}
+function drawCloud(){
+ const k=cst(),u=auth&&auth.currentUser;if(!u)return;
+ const M_={
+  load:['⏳','Consultando la nube…','Un momento.'],
+  err:['📡','No se pudo consultar la nube','Revisa la conexión y pulsa «Comprobar de nuevo». Mientras tanto no se pierde nada: tus datos están en este dispositivo.'],
+  none:['☁️','Aún no hay copia en la nube','Pulsa «Guardar en la nube» para subir los datos de este dispositivo.'],
+  ok:['✅','Todo al día','Este dispositivo y la nube tienen la misma versión.'],
+  dirty:['🟠','Cambios sin guardar','Has hecho cambios en este dispositivo que todavía NO están en la nube.'],
+  newer:['⬇️','Hay una versión más nueva en la nube','Se guardó desde otro dispositivo. Cárgala para verla aquí.'],
+  conflict:['⚠️','Hay cambios en los dos sitios','Este dispositivo y la nube han cambiado por separado. Elige cuál conservar: la otra se descartará.'],
+  link:['🔗','Elige qué versión conservar','Primera vez con el guardado manual. Compara los datos y elige la correcta.']
+ }[k];
+ const rp=k==='dirty'||k==='none'||k==='conflict'&&false,rl=k==='newer';
+ const loc=`<div class="cbx${rp?' rec':''}"><div class="eb">Este dispositivo</div><b>${S.movs.length} mov.</b><div class="mu">${SY.dirty?'Modificado '+ftime(SY.lt):'Guardado '+ftime(SY.st)}</div></div>`;
+ const cl=CL&&!CL.err&&!CL.none?`<div class="cbx${rl?' rec':''}"><div class="eb">Nube</div><b>${CL.n} mov.</b><div class="mu">Guardado ${ftime(CL.t)}${CL.dev?' desde '+esc(CL.dev):''}</div></div>`:`<div class="cbx"><div class="eb">Nube</div><b>—</b><div class="mu">${CL&&CL.none?'Sin copia':'Sin datos'}</div></div>`;
+ const dis=cbusy?' disabled':'';
+ $('clc').innerHTML=`<b style="font-size:18px">☁️ Sincronización</b><div class="mu" style="margin-top:2px">${esc(u.email||'')}</div>
+ <div style="margin:14px 0 4px;font-weight:700">${M_[0]} ${M_[1]}</div><div class="mu">${M_[2]}</div>
+ <div class="row" style="margin-top:14px">${loc}${cl}</div>
+ <div class="row" style="margin-top:14px"><button data-a="pull" class="${k==='newer'||k==='link'?'pri':''}"${dis}>⬇️ Cargar de la nube</button><button data-a="push" class="${k==='dirty'||k==='none'?'pri':''}"${dis}>⬆️ Guardar en la nube</button></div>
+ <div class="row" style="margin-top:8px"><button data-a="chk"${dis}>Comprobar de nuevo</button><button data-a="out" class="dng">Cerrar sesión</button></div>
+ <div class="row" style="margin-top:8px"><button data-a="x">Cerrar</button></div>
+ <div class="mu" style="margin-top:12px">Nada se sube ni se descarga solo: la app solo cambia la nube cuando tú pulsas «Guardar» y solo cambia este dispositivo cuando pulsas «Cargar».</div>`;
+}
+async function cloudPush(){
+ if(!ref||cbusy)return;
+ if(CL&&CL.v>SY.base&&SY.base&&!confirm(`La nube tiene una versión más nueva (${ftime(CL.t)}${CL.dev?' desde '+CL.dev:''}, ${CL.n} movimientos). Si guardas ahora, se SOBRESCRIBE con la de este dispositivo (${S.movs.length} movimientos). ¿Sobrescribir?`))return;
+ cbusy=true;drawCloud();
+ try{
+  const dev=devName(),force=!!(CL&&CL.v>SY.base&&SY.base);
+  const base=SY.base;
+  const v=await M.FS.runTransaction(db,async tx=>{
+   const sn=await tx.get(ref),cv=sn.exists()?(sn.data()._v||1):0;
+   if(!force&&sn.exists()&&cv!==base)throw new Error('conflict');
+   const nv=cv+1;tx.set(ref,{...pure(),_v:nv,_t:Date.now(),_dev:dev});return nv;
+  });
+  SY.base=v;SY.dirty=false;SY.st=Date.now();ysave();
+  CL={v,t:Date.now(),dev,n:S.movs.length,nf:0};
+  toast('✅ Guardado en la nube');buzz();
+ }catch(e){
+  if(String(e.message).includes('conflict')){await cloudCheck();toast('La nube cambió mientras tanto. Revisa y elige de nuevo.')}
+  else toast('No se pudo guardar. Revisa la conexión.');
+ }
+ cbusy=false;cloudBtn();drawCloud();
+}
+async function cloudPull(){
+ if(!ref||cbusy)return;
+ cbusy=true;drawCloud();
+ try{
+  const sn=await M.FS.getDocFromServer(ref);
+  if(!sn.exists()){toast('No hay copia en la nube todavía');cbusy=false;drawCloud();return}
+  const d=sn.data(),c=cinfo(d);
+  if((SY.dirty||!SY.base)&&!confirm(`Vas a cargar la versión de la nube (${c.n} movimientos, guardada ${ftime(c.t)}${c.dev?' desde '+c.dev:''}). Los datos de este dispositivo (${S.movs.length} movimientos${SY.dirty?', con cambios sin guardar':''}) se REEMPLAZAN. ¿Continuar?`)){cbusy=false;drawCloud();return}
+  const oS=S,oY={...SY};
+  S={movs:d.movs||[],folders:d.folders||[],cats:d.cats||oS.cats,grp:d.grp,rec:d.rec||[],skip:d.skip||[],budgets:d.budgets||{},sh:d.sh||{}};
+  ensureG();store();
+  SY.base=c.v;SY.dirty=false;SY.st=Date.now();ysave();CL=c;
+  watchGrp();refresh();buzz();
+  toast('✅ Cargada la versión de la nube',()=>{S=oS;store();SY=oY;ysave();watchGrp();refresh();cloudBtn()});
+ }catch(e){toast('No se pudo cargar. Revisa la conexión.')}
+ cbusy=false;cloudBtn();drawCloud();
 }
 async function initCloud(){
  if(!CFG.apiKey)return;
@@ -1251,32 +1349,34 @@ async function initCloud(){
   const [A,AU,FS]=await Promise.all([import(FB+'firebase-app.js'),import(FB+'firebase-auth.js'),import(FB+'firebase-firestore.js')]);
   const app=A.initializeApp(CFG);auth=AU.getAuth(app);
   db=FS.initializeFirestore(app,{localCache:FS.persistentLocalCache()});
-  M={AU,FS};$('cloud').hidden=false;setCloud(false);
+  M={AU,FS};$('cloud').hidden=false;cloudBtn();
   AU.onAuthStateChanged(auth,u=>{
-   if(unsub){unsub();unsub=null}ref=null;
-   if(!u){setCloud(false);watchGrp();return}
-   setCloud(true);watchGrp();ref=FS.doc(db,'gastos',u.uid);first=true;
-   unsub=FS.onSnapshot(ref,s=>{
-    if(s.metadata.hasPendingWrites)return;
-    const d=s.exists()?s.data():{};
-    const f=first;first=false;
-    fromCloud(d,f);
-    const ch=ensureG();store();
-    if(f||ch)FS.setDoc(ref,pure()).catch(()=>{});
-    watchGrp();refresh();
-   });
+   ref=null;CL=null;
+   if(!u){cloudBtn();watchGrp();return}
+   ref=FS.doc(db,'gastos',u.uid);watchGrp();cloudBtn();
+   cloudCheck(true);
   });
  }catch(e){}
 }
 $('cloud').onclick=async()=>{
  if(!auth)return;const AU=M.AU;
- if(auth.currentUser){if(confirm('¿Cerrar sesión? Tus datos seguirán en la nube.'))AU.signOut(auth)}
+ if(auth.currentUser)openCloud();
  else{try{await AU.signInWithPopup(auth,new AU.GoogleAuthProvider())}catch(e){toast('No se pudo iniciar sesión')}}
 };
+$('cls').onclick=e=>{
+ if(e.target.id==='cls'){$('cls').hidden=true;return}
+ const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
+ if(a==='x')$('cls').hidden=true;
+ if(a==='chk'){CL=null;cloudBtn();drawCloud();cloudCheck()}
+ if(a==='push')cloudPush();
+ if(a==='pull')cloudPull();
+ if(a==='out'&&confirm(SY.dirty?'Tienes cambios SIN GUARDAR en este dispositivo. Si cierras sesión siguen aquí, pero no estarán en la nube. ¿Cerrar sesión?':'¿Cerrar sesión? Tus datos seguirán en la nube y en este dispositivo.')){$('cls').hidden=true;M.AU.signOut(auth)}
+};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ref)cloudCheck()});
 if('serviceWorker' in navigator){
  let swr=null,ver=null,busy=false;
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>swr=r).catch(()=>{});
- const reload=()=>{if(['sheet','ssh','csh','ash','acm'].every(i=>$(i).hidden))location.reload();else setTimeout(reload,4000)};
+ const reload=()=>{if(['sheet','ssh','csh','ash','acm','cls'].every(i=>$(i).hidden))location.reload();else setTimeout(reload,4000)};
  const chk=async()=>{try{
   const t=await(await fetch('index.html',{cache:'no-store'})).text();let h=0;
   for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;
