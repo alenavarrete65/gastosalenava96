@@ -110,9 +110,10 @@ label{display:block;font-size:13px;color:var(--mu);margin-top:12px;font-weight:6
 .seg button.on{color:#fff;border:0}
 #sg.on{background:#d8453b}#si.on{background:#1c8556}#str.on{background:#3b7dd8}
 .empty{color:var(--mu);text-align:center;padding:22px}
-#sheet,#ssh,#csh,#ash{position:fixed;inset:0;background:#0008;backdrop-filter:blur(5px);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
+#sheet,#ssh,#csh,#ash,#acm{position:fixed;inset:0;background:#0008;backdrop-filter:blur(5px);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
 #csh{z-index:24}#ash{z-index:22}
-#sheet>.card,#ssh>.card,#csh>.card,#ash>.card{width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
+#acm{z-index:26}
+#sheet>.card,#ssh>.card,#csh>.card,#ash>.card,#acm>.card{width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
 #a{font:700 28px "Bricolage Grotesque",system-ui}
 .apv{font:800 40px/1.1 "Bricolage Grotesque",system-ui;letter-spacing:-.03em;text-align:center;margin:12px 0 2px}
 .apv.in{color:var(--in)}.apv.out{color:var(--out)}.apv.trc{color:#3b7dd8}
@@ -263,11 +264,13 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 <label>Concepto</label><input id="sc" placeholder="Ej. Cena, alquiler, súper…">
 <label>Fecha</label><input id="sd" type="date">
 <label>¿Quién ha pagado?</label><div class="chips" id="spay"></div>
+<div id="sgacc" hidden><label>¿Desde qué cuenta has pagado?</label><select id="sacc"></select><div class="mu" style="margin-top:6px">Se resta de esa cuenta el importe completo que has pagado tú.</div></div>
 <label>Reparto: <span id="slab"></span></label>
 <input id="sp" type="range" min="0" max="100" step="5" value="50">
 <div class="chips" id="spre"></div>
 <div class="row" style="margin-top:16px"><button id="scx">Cancelar</button><button class="pri" id="ssv">Guardar</button></div>
 </div></div>
+<div id="acm" hidden><div class="card"><b id="acmt" style="font-size:18px"></b><div class="mu" id="acmm" style="margin-top:6px"></div><label id="acml"></label><select id="acms"></select><div class="row" style="margin-top:16px"><button id="acmx">Cancelar</button><button class="pri" id="acmok">Confirmar</button></div></div></div>
 <div id="toast" hidden></div>
 
 <div id="sheet" hidden>
@@ -325,7 +328,7 @@ const PAL=['#2f8a63','#3b7dd8','#8b5cf6','#e8892b','#e0558a','#14a3a3','#d8453b'
 let S={movs:[],folders:[]},tipo='gasto',cat='',last='',st=true,AN=true,ref=null,unsub=null,first=false,auth=null,db=null,M={};
 let editId=null,editRid=null,ph=null,phHas=false,phDel=false,tab=1,ftag='',akind='banco',aedit=null,acol='',cedit=null,cemo='',ccolor='',cap=false,saving=false;
 try{const r=localStorage.getItem(KEY);if(r)S=JSON.parse(r)}catch(e){}
-const norm=()=>{if(!S.movs)S.movs=[];if(!S.folders)S.folders=[];if(!S.rec)S.rec=[];if(!S.skip)S.skip=[];if(!S.budgets)S.budgets={}};
+const norm=()=>{if(!S.movs)S.movs=[];if(!S.folders)S.folders=[];if(!S.rec)S.rec=[];if(!S.skip)S.skip=[];if(!S.budgets)S.budgets={};if(!S.sh)S.sh={}};
 norm();
 const mk=a=>a.map(([id,e,name])=>({id,e,name}));
 const DEF=()=>({gasto:mk([['g-super','🛒','Supermercado'],['g-comida','🍽️','Comer fuera'],['g-transp','🚗','Transporte'],['g-hogar','🏠','Hogar'],['g-ocio','🎉','Ocio'],['g-salud','💊','Salud'],['g-ropa','👕','Ropa'],['g-otros','📦','Otros']]),ingreso:mk([['i-trabajo','💼','Trabajo'],['i-venta','🏷️','Ventas'],['i-regalo','🎁','Regalo'],['i-otros','📦','Otros']])});
@@ -365,15 +368,29 @@ const fc=id=>{const f=S.folders.find(x=>x.id===id);if(!f||f.id==='general')retur
 // gastos de pareja pagados con «Cuenta compartida»: restan del saldo de la cuenta conjunta vinculada
 let JG={id:'',exps:[]};try{JG=JSON.parse(localStorage.getItem('gastos-jg'))||JG}catch(e){}
 const jointAcc=()=>{if(!S.grp)return null;const c=S.folders.filter(f=>f.kind==='conjunta');return c.find(f=>f.id===S.grp.acc)||c[0]||null};
-const jointExps=()=>S.grp&&JG.id===S.grp.id&&jointAcc()?JG.exps:[];
-const jointSum=()=>jointExps().reduce((s,x)=>s+x.amount,0);
+const hasAcc=id=>S.folders.some(f=>f.id===id);
+const jointSum=()=>S.grp&&JG.id===S.grp.id&&jointAcc()?(JG.exps||[]).filter(e=>e.payer==='c').reduce((s,x)=>s+x.amount,0):0;
+// movimientos de tus cuentas que vienen del grupo de Pareja (gastos pagados por ti, cuenta compartida y saldos)
+function shFlows(){
+ if(!S.grp||JG.id!==S.grp.id)return[];
+ const me=S.grp.me,sh=S.sh||{},ja=jointAcc(),out=[];
+ (JG.exps||[]).forEach(e=>{
+  if(e.payer==='c'){if(ja)out.push({acc:ja.id,amt:-e.amount,date:e.date})}
+  else if(e.payer===me&&sh[e.id]&&hasAcc(sh[e.id]))out.push({acc:sh[e.id],amt:-e.amount,date:e.date});
+ });
+ (JG.pays||[]).forEach(p=>{
+  const a=sh[p.id];if(!a||!hasAcc(a))return;
+  if(p.from===me)out.push({acc:a,amt:-p.amount,date:p.date});else if(p.to===me)out.push({acc:a,amt:p.amount,date:p.date});
+ });
+ return out;
+}
 function accStats(id){
  const A=apSet();let i=0,g=0,ti=0,to=0;
  S.movs.forEach(x=>{
   if(x.type==='transfer'){if(x.to===id)ti+=x.amount;if(x.from===id)to+=x.amount}
   else if(x.folder===id&&!isAp(x,A)){if(x.type==='ingreso')i+=x.amount;else g+=x.amount}
  });
- const ja=jointAcc();if(ja&&ja.id===id)g+=jointSum();
+ shFlows().forEach(f=>{if(f.acc===id){if(f.amt<0)g-=f.amt;else i+=f.amt}});
  const f=S.folders.find(z=>z.id===id)||{},open=f.open||0;
  return{i,g,ti,to,open,saldo:open+i-g+ti-to};
 }
@@ -500,7 +517,7 @@ function evoCard(){
  const G=gm(),now=new Date(),ms=[];
  for(let k=11;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);ms.push(d.getFullYear()+'-'+pad(d.getMonth()+1))}
  const base=S.folders.reduce((s,f)=>s+(f.open||0),0);
- const v=ms.map(m=>{const e=m+'-31';let s=base;G.forEach(x=>{if(x.date>e)return;if(x.type==='transfer'){if(x.from==='pareja')s+=x.amount}else s+=x.type==='ingreso'?x.amount:-x.amount});jointExps().forEach(j=>{if(j.date<=e)s-=j.amount});return s});
+ const v=ms.map(m=>{const e=m+'-31';let s=base;G.forEach(x=>{if(x.date>e)return;if(x.type==='transfer'){if(x.from==='pareja')s+=x.amount}else s+=x.type==='ingreso'?x.amount:-x.amount});shFlows().forEach(f=>{if(f.date<=e)s+=f.amt});return s});
  const mn=Math.min(...v),mx=Math.max(...v),rg=(mx-mn)||1,W=300,H=120,l=12,r=12,t=20,b=22;
  const px=i=>l+i*(W-l-r)/(v.length-1),py=y=>(mx===mn)?(t+(H-t-b)/2):t+(H-t-b)*(1-(y-mn)/rg);
  const pts=v.map((y,i)=>[px(i),py(y)]);
@@ -1074,6 +1091,17 @@ function gcalc(){
  (G.pays||[]).forEach(p=>{n[p.from]+=p.amount;n[p.to]-=p.amount});
  return{n,tot,paid,share,joint};
 }
+let acmCb=null;
+function accPick(title,msg,label,cur,cb){
+ const fa=formAccs();
+ $('acmt').textContent=title;$('acmm').textContent=msg;$('acml').textContent=label;
+ $('acms').innerHTML='<option value="">Ninguna (no afecta a ninguna cuenta)</option>'+fa.map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');
+ $('acms').value=cur&&fa.some(f=>f.id===cur)?cur:(fa[0]?fa[0].id:'');
+ acmCb=cb;$('acm').hidden=false;
+}
+$('acmx').onclick=()=>{$('acm').hidden=true;acmCb=null};
+$('acm').onclick=e=>{if(e.target.id==='acm'){$('acm').hidden=true;acmCb=null}};
+$('acmok').onclick=()=>{const cb=acmCb,v=$('acms').value;$('acm').hidden=true;acmCb=null;if(cb)cb(v)};
 let gwId='',gwUn=null;
 function watchGrp(){
  const id=S.grp&&S.grp.id;
@@ -1083,7 +1111,7 @@ function watchGrp(){
  gwId=id;
  gwUn=M.FS.onSnapshot(M.FS.doc(db,'grupos',id),x=>{
   const d=x.exists()?x.data():null;if(!d)return;
-  JG={id,exps:(d.exps||[]).filter(e=>e.payer==='c').map(e=>({id:e.id,amount:e.amount,date:e.date}))};
+  JG={id,exps:(d.exps||[]).map(e=>({id:e.id,amount:e.amount,date:e.date,payer:e.payer})),pays:(d.pays||[]).map(q=>({id:q.id,from:q.from,to:q.to,amount:q.amount,date:q.date}))};
   try{localStorage.setItem('gastos-jg',JSON.stringify(JG))}catch(er){}
   refresh();
  },()=>{});
@@ -1108,9 +1136,10 @@ function drawShared(){
  const me=S.grp.me,ot=me==='a'?'b':'a',nm=G.names,c=gcalc(),net=r2(c.n[me]);
  const hi=net===0?'Estáis en paz ✓':net>0?`${esc(nm[ot])} te debe`:`Debes a ${esc(nm[ot])}`;
  const items=[...(G.exps||[]).map(x=>({...x,k:'e'})),...(G.pays||[]).map(x=>({...x,k:'p'}))].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+ const accBtn=(k,id)=>{const a=S.sh[id],f=a&&S.folders.find(z=>z.id===a);return `<button class='chip ap' data-act='assign' data-k='${k}' data-id='${id}' style='margin-left:8px;padding:1px 8px;font-size:12px'>${f?'🏦 '+esc(f.name):'＋ Cuenta'}</button>`};
  const row=x=>x.k==='e'
-  ?`<div class='mov'><div class='l'><i class='ic gasto'>🧾</i><div><b>${esc(x.desc||'Gasto')}</b><small>${fdate(x.date)}<span class='ch'>${x.payer==='c'?'🤝 Cuenta compartida':'Pagó '+esc(nm[x.payer])}</span></small></div></div><div><b>${eur(x.amount)}</b><small style='justify-content:flex-end'>${x.payer==='c'?'50/50 · nadie debe':'tu parte '+eur(x.amount*(me==='a'?x.pa:100-x.pa)/100)}</small></div><button class='x' data-act='del' data-k='e' data-id='${x.id}' aria-label='Borrar'>✕</button></div>`
-  :`<div class='mov'><div class='l'><i class='ic ingreso'>💸</i><div><b>${esc(nm[x.from])} pagó a ${esc(nm[x.to])}</b><small>${fdate(x.date)}</small></div></div><div><b class='in'>${eur(x.amount)}</b></div><button class='x' data-act='del' data-k='p' data-id='${x.id}' aria-label='Borrar'>✕</button></div>`;
+  ?`<div class='mov'><div class='l'><i class='ic gasto'>🧾</i><div><b>${esc(x.desc||'Gasto')}</b><small>${fdate(x.date)}<span class='ch'>${x.payer==='c'?'🤝 Cuenta compartida':'Pagó '+esc(nm[x.payer])}</span>${x.payer===me?accBtn('e',x.id):''}</small></div></div><div><b>${eur(x.amount)}</b><small style='justify-content:flex-end'>${x.payer==='c'?'50/50 · nadie debe':'tu parte '+eur(x.amount*(me==='a'?x.pa:100-x.pa)/100)}</small></div><button class='x' data-act='del' data-k='e' data-id='${x.id}' aria-label='Borrar'>✕</button></div>`
+  :`<div class='mov'><div class='l'><i class='ic ingreso'>💸</i><div><b>${esc(nm[x.from])} pagó a ${esc(nm[x.to])}</b><small>${fdate(x.date)}${(x.from===me||x.to===me)?accBtn('p',x.id):''}</small></div></div><div><b class='in'>${eur(x.amount)}</b></div><button class='x' data-act='del' data-k='p' data-id='${x.id}' aria-label='Borrar'>✕</button></div>`;
  const id=S.grp.id,ca=S.folders.filter(f=>f.kind==='conjunta'),ja=jointAcc();
  const link=ca.length?`<div class='card'><b>Cuenta conjunta</b><div class='mu'>Los gastos pagados con «🤝 Cuenta compartida» se restan del saldo de esta cuenta (${eur(jointSum())} hasta ahora).</div>${ca.length>1?`<select id='jsel' style='margin-top:8px'>${ca.map(f=>`<option value='${f.id}'${ja&&ja.id===f.id?' selected':''}>${esc(f.name)}</option>`).join('')}</select>`:`<div style='margin-top:6px'><b>${esc(ca[0].name)}</b></div>`}</div>`:`<div class='card'><b>Cuenta conjunta</b><div class='mu'>Crea una cuenta de tipo «🤝 Conjunta» en la pestaña Cuentas y los gastos pagados con «Cuenta compartida» se restarán de su saldo.</div></div>`;
  o.innerHTML=`<div class='card' style='background:var(--tx);color:var(--bg);border:0'>
@@ -1127,6 +1156,8 @@ function drawSp(){
  const me=S.grp.me,ot=me==='a'?'b':'a',nm=G.names,v=+$('sp').value,a=parseFloat($('sa').value)||0;
  $('spay').innerHTML=[me,ot,'c'].map(i=>`<button class='chip${spay===i?' on':''}' data-py='${i}'>${i===me?'Yo':i==='c'?'🤝 Cuenta compartida':esc(nm[i])}</button>`).join('');
  const jt=spay==='c';$('sp').hidden=jt;$('spre').hidden=jt;
+ const mine=spay===me,sv=$('sacc').value,fa=formAccs();$('sgacc').hidden=!mine;
+ if(mine){$('sacc').innerHTML='<option value="">Ninguna (no restar de ninguna cuenta)</option>'+fa.map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');$('sacc').value=sv&&fa.some(f=>f.id===sv)?sv:(fa[0]?fa[0].id:'')}
  $('slab').textContent=jt?'se paga 50/50 desde la cuenta compartida · nadie debe nada':`Yo ${v}% (${eur(a*v/100)}) · ${nm[ot]} ${100-v}% (${eur(a*(100-v)/100)})`;
  $('spre').innerHTML=[50,60,70,100,0].map(p=>`<button class='chip${v===p?' on':''}' data-pr='${p}'>${p}/${100-p}</button>`).join('');
 }
@@ -1143,6 +1174,7 @@ $('ssv').onclick=()=>{
  const a=parseFloat($('sa').value);if(!(a>0)){$('sa').focus();return}
  const v=+$('sp').value,x={id:uid(),desc:$('sc').value.trim(),amount:a,date:$('sd').value||today(),payer:spay,pa:spay==='c'?50:(S.grp.me==='a'?v:100-v)};
  $('ssh').hidden=true;buzz();
+ if(spay===S.grp.me&&$('sacc').value){S.sh[x.id]=$('sacc').value;save()}
  M.FS.updateDoc(gref,{exps:M.FS.arrayUnion(x)}).catch(()=>toast('No se pudo guardar'));
 };
 $('sh').addEventListener('change',e=>{if(e.target.id==='jsel'&&S.grp){S.grp.acc=e.target.value;save();refresh();drawShared()}});
@@ -1165,7 +1197,16 @@ $('sh').onclick=async e=>{
  if(a==='settle'){
   const me=S.grp.me,ot=me==='a'?'b':'a',net=r2(gcalc().n[me]);if(!net)return;
   const from=net<0?me:ot,to=net<0?ot:me,p={id:uid(),from,to,amount:Math.abs(net),date:today()};
-  if(confirm(`¿Registrar que ${G.names[from]} ha pagado ${eur(p.amount)} a ${G.names[to]}?`))FS.updateDoc(gref,{pays:FS.arrayUnion(p)}).then(buzz).catch(()=>toast('No se pudo guardar'));
+  const pay=from===me;
+  accPick('Saldar cuentas',`${G.names[from]} paga ${eur(p.amount)} a ${G.names[to]}.`,pay?'¿Desde qué cuenta lo pagas? (se resta)':'¿En qué cuenta lo recibes? (se suma como ingreso)',null,v=>{
+   if(v){S.sh[p.id]=v;save()}
+   FS.updateDoc(gref,{pays:FS.arrayUnion(p)}).then(buzz).catch(()=>{delete S.sh[p.id];save();toast('No se pudo guardar')});
+  });
+ }
+ if(a==='assign'){
+  const k=t.dataset.k,id=t.dataset.id,o=((k==='e'?G.exps:G.pays)||[]).find(x=>x.id===id);if(!o)return;
+  const out=k==='e'||o.from===S.grp.me;
+  accPick('Cuenta de este movimiento',out?`${eur(o.amount)} se restan de la cuenta que elijas.`:`${eur(o.amount)} se suman como ingreso a la cuenta que elijas.`,out?'Cuenta desde la que se pagó':'Cuenta en la que lo recibiste',S.sh[id],v=>{if(v)S.sh[id]=v;else delete S.sh[id];save();refresh();drawShared()});
  }
  if(a==='copy'){if(navigator.clipboard)navigator.clipboard.writeText(S.grp.id);toast('Código copiado')}
  if(a==='leave'&&confirm('¿Salir del grupo? Los gastos siguen guardados para tu pareja.')){delete S.grp;save();watchGrp();refresh();if(gunsub){gunsub();gunsub=null}G=null;drawShared()}
@@ -1199,8 +1240,8 @@ setInterval(applyTheme,60000);drawTheme();
 // ----- Sincronización (Firebase) -----
 const setCloud=on=>$('cloud').textContent=on?'☁️ Sincronizado':'☁️ Iniciar sesión';
 function fromCloud(d,firstSync){
- if(firstSync)S={movs:merge(d.movs||[],S.movs),folders:merge(d.folders||[],S.folders),cats:d.cats||S.cats,grp:d.grp||S.grp,rec:merge(d.rec||[],S.rec||[]),skip:[...new Set([...(d.skip||[]),...(S.skip||[])])],budgets:{...(d.budgets||{}),...(S.budgets||{})}};
- else S={movs:d.movs||[],folders:d.folders||[],cats:d.cats||S.cats,grp:d.grp||S.grp,rec:d.rec||[],skip:d.skip||[],budgets:d.budgets||{}};
+ if(firstSync)S={movs:merge(d.movs||[],S.movs),folders:merge(d.folders||[],S.folders),cats:d.cats||S.cats,grp:d.grp||S.grp,rec:merge(d.rec||[],S.rec||[]),skip:[...new Set([...(d.skip||[]),...(S.skip||[])])],budgets:{...(d.budgets||{}),...(S.budgets||{})},sh:{...(d.sh||{}),...(S.sh||{})}};
+ else S={movs:d.movs||[],folders:d.folders||[],cats:d.cats||S.cats,grp:d.grp||S.grp,rec:d.rec||[],skip:d.skip||[],budgets:d.budgets||{},sh:d.sh||{}};
 }
 async function initCloud(){
  if(!CFG.apiKey)return;
@@ -1233,7 +1274,7 @@ $('cloud').onclick=async()=>{
 if('serviceWorker' in navigator){
  let swr=null,ver=null,busy=false;
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>swr=r).catch(()=>{});
- const reload=()=>{if(['sheet','ssh','csh','ash'].every(i=>$(i).hidden))location.reload();else setTimeout(reload,4000)};
+ const reload=()=>{if(['sheet','ssh','csh','ash','acm'].every(i=>$(i).hidden))location.reload();else setTimeout(reload,4000)};
  const chk=async()=>{try{
   const t=await(await fetch('index.html',{cache:'no-store'})).text();let h=0;
   for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;
