@@ -117,12 +117,12 @@ label{display:block;font-size:13px;color:var(--mu);margin-top:12px;font-weight:6
 .seg button.on{color:#fff;border:0}
 #sg.on{background:#d8453b}#si.on{background:#1c8556}#str.on{background:#3b7dd8}
 .empty{color:var(--mu);text-align:center;padding:22px}
-#sheet,#ssh,#csh,#ash,#acm{position:fixed;left:0;right:0;top:var(--vt,0px);height:var(--vh,100%);background:#0008;backdrop-filter:blur(5px);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
+#sheet,#ssh,#csh,#ash,#acm,#famsh{position:fixed;left:0;right:0;top:var(--vt,0px);height:var(--vh,100%);background:#0008;backdrop-filter:blur(5px);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
 #csh{z-index:24}#ash{z-index:22}
 #acm{z-index:26}
-#sheet>.card,#ssh>.card,#csh>.card,#ash>.card,#acm>.card{overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
+#sheet>.card,#ssh>.card,#csh>.card,#ash>.card,#acm>.card,#famsh>.card{overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
 input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:46px;text-align:center}
-body:has(#sheet:not([hidden]),#ssh:not([hidden]),#csh:not([hidden]),#ash:not([hidden]),#acm:not([hidden]),#cls:not([hidden])){overflow:hidden}
+body:has(#sheet:not([hidden]),#ssh:not([hidden]),#csh:not([hidden]),#ash:not([hidden]),#acm:not([hidden]),#famsh:not([hidden]),#cls:not([hidden])){overflow:hidden}
 #a{font:700 28px "Bricolage Grotesque",system-ui}
 .apv{font:800 40px/1.1 "Bricolage Grotesque",system-ui;letter-spacing:-.03em;text-align:center;margin:12px 0 2px}
 .apv.in{color:var(--in)}.apv.out{color:var(--out)}.apv.trc{color:#3b7dd8}
@@ -202,13 +202,21 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 @keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 @keyframes shk{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.rc{margin-top:12px;border-top:1px solid #ffffff40;padding-top:8px}
+.rh{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:#ffffffc4}
+.rh button{padding:4px 10px;font-size:12px;text-transform:none;letter-spacing:0}
+.rr{display:flex;gap:8px;align-items:center;padding:5px 0;font-size:13px;border-bottom:1px solid #ffffff1f}
+.rr:last-child{border:0}
+.rr .rd{flex:none;opacity:.75;font-variant-numeric:tabular-nums}
+.rr .rt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rr b{white-space:nowrap;font-variant-numeric:tabular-nums}
 [hidden]{display:none!important}
 </style>
 </head>
 <body>
 <div id="mini"><b>Mis gastos</b><span id="mbal"></span></div>
 <main>
-<div class="row" style="align-items:center"><h1>Mis gastos</h1><button id="shb" style="flex:none;border-radius:999px;font-size:13px;padding:8px 12px">👥 Pareja</button><button id="cloud" hidden style="flex:none"></button></div>
+<div class="row" style="align-items:center"><h1>Mis gastos</h1><button id="shb" style="flex:none;border-radius:999px;font-size:13px;padding:8px 12px">👥 Grupos</button><button id="cloud" hidden style="flex:none"></button></div>
 
 <div class="card sum hero">
 <div><small>Ingresos</small><b class="in" id="sI">0,00 €</b></div>
@@ -265,7 +273,9 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 
 <div id="sh" hidden><div class="shin">
 <div class="row" style="align-items:center;margin-bottom:14px"><button id="shx" style="flex:none">←</button><h1 style="margin:0;font-size:24px">Gastos compartidos</h1></div>
+<div class="row" id="shtabs" style="margin-bottom:14px"><button class="chip on" data-shtab="pareja" style="justify-content:center">👥 Pareja</button><button class="chip" data-shtab="familia" style="justify-content:center">👪 Familia</button></div>
 <div id="shc"></div>
+<div id="famc" hidden></div>
 </div></div>
 <div id="ssh" hidden><div class="card">
 <b style="font-size:18px">Nuevo gasto compartido</b>
@@ -279,6 +289,17 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 <div class="chips" id="spre"></div>
 <div class="row" style="margin-top:16px"><button id="scx">Cancelar</button><button class="pri" id="ssv">Guardar</button></div>
 </div></div>
+<div id="famsh" hidden><div class="card">
+<b id="famT" style="font-size:18px">Nuevo gasto</b>
+<label>Importe (€)</label><input id="famA" type="number" inputmode="decimal" min="0" step="0.01">
+<label>Concepto</label><input id="famC" placeholder="Ej. Cena, gasolina, regalo…">
+<label>Fecha</label><input id="famD" type="date">
+<label>¿Quién ha pagado?</label><div class="chips" id="famPay"></div>
+<label>Reparto</label><div class="chips" id="famMd"></div>
+<label id="famPl"></label><div id="famPt"></div>
+<div class="mu" id="famNt" style="margin-top:8px"></div>
+<div class="row" style="margin-top:16px"><button id="famCancel">Cancelar</button><button id="famDel" class="dng" hidden>Borrar</button><button class="pri" id="famSave">Guardar</button></div>
+</div></div>
 <div id="acm" hidden><div class="card"><b id="acmt" style="font-size:18px"></b><div class="mu" id="acmm" style="margin-top:6px"></div><label id="acml"></label><select id="acms"></select><div class="row" style="margin-top:16px"><button id="acmx">Cancelar</button><button class="pri" id="acmok">Confirmar</button></div></div></div>
 <button id="svb" hidden></button>
 <div id="cls" hidden><div class="card" id="clc"></div></div>
@@ -290,10 +311,11 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 <div class="seg" style="margin-top:8px"><button id="sg" class="on">Gasto</button><button id="si">Ingreso</button><button id="str">Transf.</button></div>
 <div class="apv out" id="apv">0,00 €</div>
 <label>Importe (€)</label><input id="a" type="number" inputmode="decimal" min="0" step="0.01">
-<div id="gcat"><label>Categoría</label><div class="chips" id="cats"></div><div class="mu" id="aph" hidden style="margin-top:8px">📂 Apartado independiente: lleva su propio saldo y no cuenta en tu saldo general.</div></div>
+<div id="gcat"><label>Categoría</label><div class="chips" id="cats"></div><div class="mu" id="aph" hidden style="margin-top:8px">📂 Apartado independiente: lleva su propio saldo y no cuenta en tu saldo general. Con el botón de abajo decides si este movimiento también suma o resta de la cuenta.</div></div>
 <label id="dl">Fecha</label><input id="d" type="date">
 <label>Concepto</label><input id="c" placeholder="Ej. Gasolina, cuota del coche…">
 <div id="gacc"><label>Cuenta</label><select id="f"></select></div>
+<div id="gaff" hidden style="margin-top:10px"><button type="button" id="afb" style="width:100%;text-align:left"></button><div class="mu" id="afn" style="margin-top:6px"></div></div>
 <div id="gtr" hidden><div class="row"><div id="tfw"><label id="tfl">Desde</label><select id="tf"></select></div><div><label>Hasta</label><select id="tt"></select></div></div><div id="gwho" hidden><label>¿Quién carga la cuenta?</label><div class="chips" id="gwc"></div><div class="mu" id="gwn" style="margin-top:6px"></div></div></div>
 <div id="gtag"><label>Etiquetas</label><input id="tg" placeholder="#vacaciones #regalo" autocapitalize="none"><div class="chips" id="tgs"></div></div>
 <div id="gph"><label>Ticket</label>
@@ -374,9 +396,11 @@ const catById=id=>[...S.cats.gasto,...S.cats.ingreso].find(c=>c.id===id);
 const ccol=c=>(c&&c.col)||PAL[hash(c?c.id:'x')%7];
 const apSet=()=>new Set([...S.cats.gasto,...S.cats.ingreso].filter(c=>c.ap).map(c=>c.id));
 const isAp=(x,A)=>x.type!=='transfer'&&!!x.cat&&(A||apSet()).has(x.cat);
+// un movimiento de apartado solo toca la cuenta si lo marcas con «aff» (casilla en la hoja de movimiento)
+const cnt=(x,A)=>!isAp(x,A)||!!x.aff;
 const gm=()=>{const A=apSet();return S.movs.filter(x=>!isAp(x,A))};
 const accs=()=>S.folders.filter(f=>f.id!=='general');
-const vis=()=>{const A=apSet();return S.folders.filter(f=>f.id!=='general'||S.movs.some(x=>!isAp(x,A)&&(x.type==='transfer'?(x.from==='general'||x.to==='general'):x.folder==='general')))};
+const vis=()=>{const A=apSet();return S.folders.filter(f=>f.id!=='general'||S.movs.some(x=>cnt(x,A)&&(x.type==='transfer'?(x.from==='general'||x.to==='general'):x.folder==='general')))};
 const formAccs=()=>accs().length?accs():S.folders;
 const fname=id=>id==='pareja'?'Mi pareja':((S.folders.find(f=>f.id===id)||{}).name||'Sin cuenta');
 const fc=id=>{const f=S.folders.find(x=>x.id===id);if(!f||f.id==='general')return PAL[7];if(f.color)return f.color;return PAL[Math.max(0,accs().indexOf(f))%7]};
@@ -403,7 +427,7 @@ function accStats(id){
  const A=apSet();let i=0,g=0,ti=0,to=0,xi=0,xg=0;
  S.movs.forEach(x=>{
   if(x.type==='transfer'){if(x.to===id)ti+=x.amount;if(x.from===id)to+=x.amount;const t=jt(x);if(t==='ingreso'&&x.to===id)xi+=x.amount;if(t==='gasto'&&x.from===id)xg+=x.amount}
-  else if(x.folder===id&&!isAp(x,A)){if(x.type==='ingreso')i+=x.amount;else g+=x.amount}
+  else if(x.folder===id&&cnt(x,A)){if(x.type==='ingreso')i+=x.amount;else g+=x.amount}
  });
  shFlows().forEach(f=>{if(f.acc===id){if(f.amt<0)g-=f.amt;else i+=f.amt}});
  const f=S.folders.find(z=>z.id===id)||{},open=f.open||0;
@@ -427,7 +451,7 @@ function applyRec(){
   while((y<cy||(y===cy&&m<=cm))&&n++<600){
    const ym=y+'-'+pad(m+1),dim=new Date(y,m+1,0).getDate(),dt=ym+'-'+pad(Math.min(r.day,dim)),id='r'+r.id+'-'+ym;
    if(dt>td)break;
-   if(dt>=r.start&&!ids.has(id)&&!sk.has(id)){S.movs.push(r.type==='transfer'?{id,type:'transfer',amount:r.amount,date:dt,concept:r.concept||'',from:r.from,to:r.to,rid:r.id}:{id,type:r.type,amount:r.amount,date:dt,concept:r.concept||'',folder:r.folder||'general',cat:r.cat||'',tags:r.tags||[],rid:r.id});ids.add(id);ch=true}
+   if(dt>=r.start&&!ids.has(id)&&!sk.has(id)){S.movs.push(r.type==='transfer'?{id,type:'transfer',amount:r.amount,date:dt,concept:r.concept||'',from:r.from,to:r.to,rid:r.id}:{id,type:r.type,amount:r.amount,date:dt,concept:r.concept||'',folder:r.folder||'general',cat:r.cat||'',tags:r.tags||[],rid:r.id,...(r.aff?{aff:true}:{})});ids.add(id);ch=true}
    m++;if(m>11){m=0;y++}
   }
  });
@@ -513,7 +537,7 @@ function opts(){
 function filtered(){
  const m=$('fm').value,f=$('ff').value,c=$('fc').value,q=$('q').value.trim().toLowerCase(),A=apSet(),apSel=A.has(c);
  return S.movs.filter(x=>{
-  if(isAp(x,A)&&x.cat!==c)return false;
+  if(isAp(x,A)&&x.cat!==c&&!(x.aff&&f&&x.folder===f))return false;
   if(m&&!x.date.startsWith(m))return false;
   if(f&&!apSel&&!(x.type==='transfer'?(x.from===f||x.to===f):x.folder===f))return false;
   if(c&&x.cat!==c)return false;
@@ -536,7 +560,7 @@ function barsCard(){
  return `<div class='card'><b>Últimos 6 meses</b> <span class='mu'><span class='in'>●</span> ingresos <span class='out'>●</span> gastos</span>${svg}</div>`;
 }
 function evoCard(){
- const G=gm(),now=new Date(),ms=[];
+ const A0=apSet(),G=S.movs.filter(x=>cnt(x,A0)),now=new Date(),ms=[];
  for(let k=11;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);ms.push(d.getFullYear()+'-'+pad(d.getMonth()+1))}
  const base=S.folders.reduce((s,f)=>s+(f.kind==='conjunta'?0:(f.open||0)),0);
  const v=ms.map(m=>{const e=m+'-31';let s=base;G.forEach(x=>{if(x.date>e)return;if(x.type==='transfer'){const t=jt(x);if(t)s+=t==='ingreso'?x.amount:-x.amount}else if(!isJ(x.folder))s+=x.type==='ingreso'?x.amount:-x.amount});shFlows().forEach(f=>{if(f.date<=e&&!isJ(f.acc))s+=f.amt});return s});
@@ -557,7 +581,7 @@ function totCards(){
  let tot=0,bank=0,ti=0,tg=0,bi=0,bg=0;
  S.folders.forEach(f=>{const s=accStats(f.id),j=f.kind==='conjunta';if(!j){tot+=s.saldo;ti+=s.i+s.xi;tg+=s.g+s.xg}if(f.kind==='banco'||j){bank+=s.saldo;bi+=s.i+s.xi;bg+=s.g+s.xg}});
  const card=(t,sub,v,i,g)=>`<div class="card"><div class="eb">${t}</div><div class="mu">${sub}</div><div class="tv">${N(v,v<0?'out':'')}</div><div class="mu">↗ ${N(i,'in')}</div><div class="mu">↙ ${N(g,'out')}</div></div>`;
- return `<div class="tot">${card('Total','Efectivo + bancos (sin la conjunta)',tot,ti,tg)}${card('Solo bancos','Incluye la conjunta',bank,bi,bg)}</div><div class="mu" style="margin:-2px 0 12px">Los apartados independientes no cuentan aquí.</div>`;
+ return `<div class="tot">${card('Total','Efectivo + bancos (sin la conjunta)',tot,ti,tg)}${card('Solo bancos','Incluye la conjunta',bank,bi,bg)}</div><div class="mu" style="margin:-2px 0 12px">Los apartados independientes no cuentan aquí, salvo los movimientos que marques para sumar o restar de una cuenta.</div>`;
 }
 function accCard(f,k){
  const s=accStats(f.id),c=fc(f.id),gen=f.id==='general';
@@ -570,7 +594,28 @@ function accCard(f,k){
  ${gen?'':`<div class="acts" style="margin-top:8px">${f.kind==='conjunta'?`<button data-load="${f.id}">＋ Cargar cuenta</button>`:''}<button data-adj="${f.id}">💰 Ajustar saldo real</button></div>`}
  ${f.goal?`<div class="bar"><i style="width:0" data-w="${Math.min(100,s.g/f.goal*100)}"></i></div><small>Pagado ${eur(s.g)} de ${eur(f.goal)} · faltan ${eur(Math.max(0,f.goal-s.g))}</small>`:''}
  ${(()=>{const ja=jointAcc();return ja&&ja.id===f.id&&jointSum()?`<div><small>🤝 Incluye ${eur(jointSum())} de gastos de Pareja pagados con la cuenta compartida</small></div>`:''})()}
- ${est?`<div><small>A este ritmo: ~${est} ${est===1?'mes':'meses'} para terminar</small></div>`:''}</div>`;
+ ${est?`<div><small>A este ritmo: ~${est} ${est===1?'mes':'meses'} para terminar</small></div>`:''}
+ ${recHTML(f.id)}</div>`;
+}
+// últimos movimientos que han tocado el saldo de una cuenta
+function accRecent(id,n){
+ const A=apSet(),L=[];
+ S.movs.forEach(x=>{
+  if(x.type==='transfer'){
+   if(x.to===id)L.push({d:x.date,k:x.id,t:x.concept||(x.from==='pareja'?'Aportación de pareja':'Transferencia de '+fname(x.from)),a:x.amount,e:'⇄'});
+   if(x.from===id)L.push({d:x.date,k:x.id,t:x.concept||('Transferencia a '+fname(x.to)),a:-x.amount,e:'⇄'});
+  }else if(x.folder===id&&cnt(x,A)){
+   const c=catById(x.cat);
+   L.push({d:x.date,k:x.id,t:x.concept||(c?c.name:(x.type==='gasto'?'Gasto':'Ingreso')),a:x.type==='ingreso'?x.amount:-x.amount,e:c?c.e:(x.type==='ingreso'?'↗':'↙')});
+  }
+ });
+ shFlows().forEach(f=>{if(f.acc===id)L.push({d:f.date,k:'~sh',t:'Gasto compartido (Pareja)',a:f.amt,e:'👥'})});
+ return L.sort((a,b)=>b.d.localeCompare(a.d)||String(b.k).localeCompare(String(a.k))).slice(0,n);
+}
+function recHTML(id){
+ const R=accRecent(id,5);
+ return `<div class="rc"><div class="rh"><span>Últimos movimientos</span><button data-accview="${id}">Ver todos</button></div>`
+ +(R.length?R.map(r=>`<div class="rr"><span class="rd">${fdate(r.d).slice(0,5)}</span><span class="rt">${r.e} ${esc(r.t)}</span><b class="${r.a<0?'ng':''}">${r.a<0?'−':'+'}${eur(Math.abs(r.a))}</b></div>`).join(''):'<small>Aún sin movimientos</small>')+`</div>`;
 }
 function apCard(c,k){
  const s=apStats(c.id),col=ccol(c);
@@ -638,7 +683,7 @@ function rowHTML(x,k){
  const base=tr?'#3b7dd8':(c?ccol(c):(x.type==='ingreso'?'#1c8556':'#d8453b'));
  const tile=tr?'⇄':(c?c.e:(x.type==='ingreso'?'↗':'↙'));
  const title=tr?(x.concept||(x.from==='pareja'?'Aportación de pareja':'Transferencia')):(x.concept||(c||{}).name||(x.type==='gasto'?'Gasto':'Ingreso'));
- const where=tr?chip('#3b7dd8',fname(x.from)+' → '+fname(x.to)):ap?chip(base,'Apartado'):chip(fc(x.folder),fname(x.folder));
+ const where=tr?chip('#3b7dd8',fname(x.from)+' → '+fname(x.to)):ap?chip(base,'Apartado')+(x.aff?chip(fc(x.folder),fname(x.folder)):''):chip(fc(x.folder),fname(x.folder));
  const tags=(x.tags||[]).map(t=>`<span class="tg">#${esc(t)}</span>`).join('');
  const tj=tr?jt(x):null;
  const amt=tr?(tj?`<b class="${tj==='ingreso'?'in':'out'}">${tj==='ingreso'?'+':'−'}${eur(x.amount)}</b>`:`<b style="color:#3b7dd8">${eur(x.amount)}</b>`):`<b class="${x.type==='ingreso'?'in':'out'}">${x.type==='ingreso'?'+':'−'}${eur(x.amount)}</b>`;
@@ -698,10 +743,22 @@ $('phx').onclick=()=>{ph=null;phDel=true;clearPh()};
 $('pv').onclick=()=>$('pv').hidden=true;
 
 // ----- hoja de movimiento -----
+let affOn=false;
+// botón «sumar/restar también de la cuenta» (solo para categorías que son apartados)
+function affUI(){
+ const c=catById(cat),show=!!(c&&c.ap)&&tipo!=='transfer';
+ $('gaff').hidden=!show;if(!show)return;
+ const b=$('afb'),nm=fname($('f').value);
+ b.textContent=(affOn?'✅ ':'⬜ ')+(tipo==='ingreso'?'Sumar a':'Restar de')+' la cuenta «'+nm+'»';
+ b.className=affOn?'pri':'';
+ $('afn').textContent=affOn?(tipo==='ingreso'?'Este ingreso también aumenta el saldo de la cuenta.':'Este gasto también baja el saldo de la cuenta.'):'Solo cuenta en el apartado: la cuenta no cambia.';
+}
+$('afb').onclick=()=>{affOn=!affOn;affUI()};
+$('f').addEventListener('change',affUI);
 const updApv=()=>{const v=parseFloat($('a').value)||0,el=$('apv');el.className='apv '+(tipo==='gasto'?'out':tipo==='ingreso'?'in':'trc');tween(el,v)};
 function drawCats(){
  $('cats').innerHTML=(tipo==='transfer'?[]:S.cats[tipo]).map(c=>`<button class="chip${c.id===cat?' on':''}${c.ap?' ap':''}" data-c="${c.id}">${c.e} ${esc(c.name)}</button>`).join('')+'<button class="chip" data-c="+">＋ Nueva</button>';
- const c=catById(cat);$('aph').hidden=!(c&&c.ap);
+ const c=catById(cat);$('aph').hidden=!(c&&c.ap);affUI();
  const tg=allTags().filter(t=>!parseTags($('tg').value).includes(t)).slice(0,8);
  $('tgs').innerHTML=tg.map(t=>`<button type="button" class="chip" data-addtag="${esc(t)}" style="padding:4px 10px;font-size:13px">#${esc(t)}</button>`).join('');
 }
@@ -715,7 +772,7 @@ function setTipo(t){
 }
 function openSheet(o={}){
  const x=o.id?S.movs.find(m=>m.id===o.id):null;
- editId=x?x.id:null;ph=null;phDel=false;phHas=!!(x&&x.ph);
+ editId=x?x.id:null;ph=null;phDel=false;phHas=!!(x&&x.ph);affOn=!!(x&&x.aff);
  $('sht').textContent=x?'Editar movimiento':(o.rec?'Nuevo recurrente':'Nuevo movimiento');
  $('apv')._v=0;
  $('a').value=x?x.amount:'';$('c').value=x?(x.concept||''):'';$('d').value=x?x.date:today();
@@ -763,6 +820,7 @@ async function saveMov(){
   m={type:'transfer',amount:a,date,concept,from,to};
  }else{
   m={type:tipo,amount:a,date,concept,folder:$('f').value||'general',cat,tags:parseTags($('tg').value)};
+  const c0=catById(cat);if(c0&&c0.ap&&affOn)m.aff=true;
  }
  saving=true;
  try{
@@ -775,7 +833,7 @@ async function saveMov(){
    if(!m.tags||!m.tags.length)delete m.tags;
    S.movs[i]=m;last=m.id;
   }else if($('rp').checked){
-   const r=tr?{id:uid(),type:'transfer',amount:a,day:+date.slice(8),concept,from:m.from,to:m.to,start:date}:{id:uid(),type:tipo,amount:a,day:+date.slice(8),concept,folder:m.folder,cat,tags:m.tags,start:date};
+   const r=tr?{id:uid(),type:'transfer',amount:a,day:+date.slice(8),concept,from:m.from,to:m.to,start:date}:{id:uid(),type:tipo,amount:a,day:+date.slice(8),concept,folder:m.folder,cat,tags:m.tags,start:date,...(m.aff?{aff:true}:{})};
    S.rec.push(r);applyRec();last='r'+r.id+'-'+date.slice(0,7);m.id=last;
   }else{
    m.id=uid();last=m.id;if(!m.tags||!m.tags.length)delete m.tags;S.movs.push(m);
@@ -962,6 +1020,7 @@ document.addEventListener('click',e=>{
  if(el=q('[data-cedit]')){openCat({id:el.dataset.cedit});return}
  if(el=q('[data-cnew]')){openCat({ap:el.dataset.cnew==='ap'});return}
  if(el=q('[data-apadd]')){openSheet({cat:el.dataset.apadd});return}
+ if(el=q('[data-accview]')){$('ff').value=el.dataset.accview;$('fc').value='';$('fm').value='';$('q').value='';ftag='';setTab(1);window.scrollTo({top:0});return}
  if(el=q('[data-apview]')){$('fc').value=el.dataset.apview;$('ff').value='';$('fm').value='';$('q').value='';ftag='';setTab(1);window.scrollTo({top:0});return}
  if(el=q('[data-bud]')){setBud(el.dataset.bud);return}
  if(el=q('[data-delrec]')){
@@ -1142,7 +1201,7 @@ function watchGrp(){
 }
 function openShared(){
  watchGrp();
- $('sh').hidden=false;if(gunsub){gunsub();gunsub=null}G=null;
+ $('sh').hidden=false;if(gunsub){gunsub();gunsub=null}if(famUn){famUn();famUn=null}G=null;
  if(auth&&auth.currentUser&&S.grp){
   gref=M.FS.doc(db,'grupos',S.grp.id);
   gunsub=M.FS.onSnapshot(gref,x=>{G=x.exists()?x.data():null;drawShared()},()=>{G=null;drawShared()});
@@ -1185,8 +1244,8 @@ function drawSp(){
  $('slab').textContent=jt?'se paga 50/50 desde la cuenta compartida · nadie debe nada':`Yo ${v}% (${eur(a*v/100)}) · ${nm[ot]} ${100-v}% (${eur(a*(100-v)/100)})`;
  $('spre').innerHTML=[50,60,70,100,0].map(p=>`<button class='chip${v===p?' on':''}' data-pr='${p}'>${p}/${100-p}</button>`).join('');
 }
-$('shb').onclick=openShared;
-$('shx').onclick=()=>{$('sh').hidden=true;if(gunsub){gunsub();gunsub=null}};
+$('shb').onclick=()=>openGroups();
+$('shx').onclick=()=>{$('sh').hidden=true;if(gunsub){gunsub();gunsub=null}if(famUn){famUn();famUn=null}};
 $('sp').oninput=$('sa').oninput=drawSp;
 $('scx').onclick=()=>$('ssh').hidden=true;
 $('ssh').onclick=e=>{
@@ -1213,7 +1272,7 @@ $('sh').onclick=async e=>{
  }
  if(a==='join'){
   const id=$('gcode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');
-  try{const g=await FS.getDoc(FS.doc(db,'grupos',id));if(!g.exists())return toast('Código no encontrado');pend={id,names:g.data().names};drawShared()}
+  try{const g=await FS.getDoc(FS.doc(db,'grupos',id));if(!g.exists())return toast('Código no encontrado');if(!g.data().names)return toast('Ese código es de un grupo de Familia: únete desde la pestaña Familia');pend={id,names:g.data().names};drawShared()}
   catch(x){toast('No se pudo comprobar el código')}
  }
  if(a==='iam'){S.grp={id:pend.id,me:t.dataset.id};pend=null;save();openShared()}
@@ -1240,6 +1299,239 @@ $('sh').onclick=async e=>{
  }
 };
 
+// ----- Familia: gastos a repartir entre varios (estilo Tricount) -----
+let FD=null,famRef=null,famUn=null,famPend=null,shTab='pareja',famEdit=null,famPayer='',famMode='eq',famSel=new Set(),famCu={};
+const famMem=()=>(FD&&FD.members)||[];
+const famName=id=>{const m=famMem().find(x=>x.id===id);return m?m.name:'(eliminado)'};
+const famSame=(a,b)=>{const ka=Object.keys(a),kb=Object.keys(b||{});return ka.length===kb.length&&ka.every(k=>b&&Math.abs(a[k]-b[k])<.005)};
+// saldo de cada miembro: lo que ha pagado - lo que le corresponde + pagos de liquidación ya hechos
+function famCalc(){
+ const n={},paid={},share={};let tot=0;
+ famMem().forEach(m=>{n[m.id]=0;paid[m.id]=0;share[m.id]=0});
+ (FD.exps||[]).forEach(e=>{
+  tot+=e.amount;
+  if(e.payer in n){n[e.payer]+=e.amount;paid[e.payer]+=e.amount}
+  Object.entries(e.sh||{}).forEach(([k,v])=>{if(k in n){n[k]-=v;share[k]+=v}});
+ });
+ (FD.pays||[]).forEach(p=>{if(p.from in n)n[p.from]+=p.amount;if(p.to in n)n[p.to]-=p.amount});
+ Object.keys(n).forEach(k=>{n[k]=r2(n[k]);paid[k]=r2(paid[k]);share[k]=r2(share[k])});
+ return{n,tot:r2(tot),paid,share};
+}
+// liquidación con el mínimo de pagos: el que más debe paga al que más se le debe
+function famPlan(n){
+ const cr=[],de=[];
+ Object.entries(n).forEach(([k,v])=>{if(v>.004)cr.push([k,v]);else if(v<-.004)de.push([k,-v])});
+ cr.sort((a,b)=>b[1]-a[1]);de.sort((a,b)=>b[1]-a[1]);
+ const out=[];let i=0,j=0;
+ while(i<de.length&&j<cr.length){
+  const a=r2(Math.min(de[i][1],cr[j][1]));
+  if(a>0)out.push({from:de[i][0],to:cr[j][0],amount:a});
+  de[i][1]=r2(de[i][1]-a);cr[j][1]=r2(cr[j][1]-a);
+  if(de[i][1]<=.004)i++;
+  if(cr[j][1]<=.004)j++;
+ }
+ return out;
+}
+// reparto de un importe: por igual entre los elegidos (los céntimos sobrantes van a los primeros) o por importes a mano
+function famShares(a){
+ const o={};
+ if(famMode==='eq'){
+  const ids=famMem().filter(m=>famSel.has(m.id)).map(m=>m.id);if(!ids.length)return null;
+  const cents=Math.round(a*100),base=Math.floor(cents/ids.length),rem=cents-base*ids.length;
+  ids.forEach((id,i)=>o[id]=(base+(i<rem?1:0))/100);
+  return o;
+ }
+ let s=0;
+ famMem().forEach(m=>{const v=Math.round((parseFloat(famCu[m.id])||0)*100);if(v>0){o[m.id]=v/100;s+=v}});
+ return s===Math.round(a*100)&&s>0?o:null;
+}
+function famText(){
+ const c=famCalc(),plan=famPlan(c.n);
+ return (FD.name||'Familia')+' · liquidación\nTotal gastado: '+eur(c.tot)+'\n\n'+(plan.length?plan.map(p=>'• '+famName(p.from)+' paga '+eur(p.amount)+' a '+famName(p.to)).join('\n'):'Todo saldado ✓');
+}
+async function famTx(fn){
+ await M.FS.runTransaction(db,async tx=>{const sn=await tx.get(famRef);if(!sn.exists())throw new Error('nogroup');tx.update(famRef,fn(sn.data()))});
+}
+function setShTab(t){
+ shTab=t;
+ document.querySelectorAll('[data-shtab]').forEach(b=>b.classList.toggle('on',b.dataset.shtab===t));
+ $('shc').hidden=t!=='pareja';$('famc').hidden=t!=='familia';
+ if(t==='pareja')openShared();else famOpen();
+}
+function openGroups(){if(!S.grp&&S.fam)shTab='familia';$('sh').hidden=false;setShTab(shTab)}
+$('shtabs').onclick=e=>{const b=e.target.closest('[data-shtab]');if(b)setShTab(b.dataset.shtab)};
+function famOpen(){
+ if(gunsub){gunsub();gunsub=null}
+ if(famUn){famUn();famUn=null}
+ FD=null;famRef=null;
+ if(auth&&auth.currentUser&&S.fam){
+  famRef=M.FS.doc(db,'grupos',S.fam.id);
+  famUn=M.FS.onSnapshot(famRef,x=>{FD=x.exists()?x.data():null;famDraw()},()=>{FD=null;famDraw()});
+ }else famDraw();
+}
+function famDraw(){
+ const o=$('famc'),u=auth&&auth.currentUser;
+ if(!auth){o.innerHTML="<div class='card'>Para compartir gastos hace falta la sincronización: pega tu configuración de Firebase en <b>index.html</b> (mira el LEEME).</div>";return}
+ if(!u){o.innerHTML="<div class='card'><b>Inicia sesión</b><p class='mu'>Cada miembro entra con su cuenta de Google y os unís al grupo con un código.</p><button class='pri' data-fa='login'>Iniciar sesión con Google</button></div>";return}
+ if(!S.fam){
+  o.innerHTML=famPend
+   ?`<div class='card'><b>¿Quién eres en «${esc(famPend.name)}»?</b><div class='chips'>${famPend.members.map(m=>`<button class='chip' data-fa='iam' data-id='${m.id}'>${esc(m.name)}</button>`).join('')}</div><label>¿No estás en la lista? Escribe tu nombre</label><input id='fnew' placeholder='Tu nombre'><div class='row' style='margin-top:12px'><button data-fa='cancelJoin'>Cancelar</button><button class='pri' data-fa='iamnew'>Unirme como nuevo</button></div></div>`
+   :`<div class='card'><b>Crear grupo de gastos</b><div class='mu'>Para familia, viajes, piso compartido… Sin cuenta conjunta: solo apuntáis los gastos y al final se liquida.</div><label>Nombre del grupo</label><input id='fgn' value='Familia' placeholder='Ej. Familia, Viaje a Roma…'><label>Tu nombre</label><input id='fn1' placeholder='Ej. Alejandro'><label>Otros miembros (opcional, separados por comas)</label><input id='fnm' placeholder='Ej. Mamá, Papá, Lucía'><div class='mu' style='margin-top:6px'>Puedes añadir o quitar miembros cuando quieras, sin límite.</div><p><button class='pri' data-fa='create'>Crear grupo</button></p></div><div class='card'><b>¿Ya te han dado un código?</b><label>Código</label><input id='fcode' placeholder='XXXXX-XXXXX' autocapitalize='characters'><p><button data-fa='join'>Unirme</button></p></div>`;
+  return;
+ }
+ if(!FD){o.innerHTML="<div class='card'>Cargando grupo…<p><button data-fa='leave'>Salir del grupo</button></p></div>";return}
+ const mem=famMem(),me=S.fam.me;
+ if(!mem.some(m=>m.id===me)){
+  o.innerHTML=`<div class='card'><b>¿Quién eres en «${esc(FD.name||'Familia')}»?</b><div class='chips'>${mem.map(m=>`<button class='chip' data-fa='iam' data-id='${m.id}'>${esc(m.name)}</button>`).join('')}</div><p><button data-fa='leave'>Salir del grupo</button></p></div>`;
+  return;
+ }
+ const c=famCalc(),net=c.n[me]||0,plan=famPlan(c.n),nm=id=>id===me?'Tú':esc(famName(id));
+ const hi=net===0?(c.tot?'Estás en paz ✓':'Aún no hay gastos'):net>0?'Te deben en total':'Debes en total';
+ const items=[...(FD.exps||[]).map(x=>({...x,k:'e'})),...(FD.pays||[]).map(x=>({...x,k:'p'}))].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+ const used=id=>(FD.exps||[]).some(e=>e.payer===id||(e.sh&&id in e.sh))||(FD.pays||[]).some(p=>p.from===id||p.to===id);
+ const planH=plan.length?plan.map(p=>`<div class='mov'><div class='l'><i class='ic' style='background:#3b7dd826;color:#3b7dd8'>⇄</i><div><b>${nm(p.from)} → ${nm(p.to)}</b><small>${p.from===me?'Tú pagas':p.to===me?'Tú recibes':'Entre otros miembros'}</small></div></div><div><b>${eur(p.amount)}</b><button data-fa='paid' data-from='${p.from}' data-to='${p.to}' data-amt='${p.amount}' style='margin-left:8px;padding:6px 10px;font-size:13px'>✓ Pagado</button></div></div>`).join(''):`<div class='empty'>${c.tot?'Todo saldado ✓':'Aún no hay gastos'}</div>`;
+ const balH=mem.map((m,i)=>{const v=c.n[m.id],cl=v>0?'in':v<0?'out':'mu',ini=esc(([...m.name][0]||'?').toUpperCase());
+  return `<div class='cr'><i class='ic' style='background:${PAL[i%7]}26;color:${PAL[i%7]}'>${ini}</i><div style='flex:1;min-width:0'><div class='cn'><span>${esc(m.name)}${m.id===me?' (tú)':''}</span><b class='${cl}'>${v>0?'+':v<0?'−':''}${eur(Math.abs(v))}</b></div><div class='mu'>Pagó ${eur(c.paid[m.id])} · Le corresponde ${eur(c.share[m.id])}</div></div></div>`}).join('');
+ const rowH=items.map(x=>x.k==='e'
+  ?`<div class='mov' data-fa='edit' data-e='${x.id}' role='button' tabindex='0'><div class='l'><i class='ic gasto'>🧾</i><div><b>${esc(x.desc||'Gasto')}</b><small>${fdate(x.date)}<span class='ch'>Pagó ${esc(famName(x.payer))}</span></small></div></div><div><b>${eur(x.amount)}</b><small style='justify-content:flex-end'>${(x.sh&&x.sh[me])?'tu parte '+eur(x.sh[me]):'no participas'}</small></div></div>`
+  :`<div class='mov'><div class='l'><i class='ic ingreso'>💸</i><div><b>${esc(famName(x.from))} pagó a ${esc(famName(x.to))}</b><small>${fdate(x.date)}</small></div></div><div><b class='in'>${eur(x.amount)}</b></div><button class='x' data-fa='delpay' data-e='${x.id}' aria-label='Borrar pago'>✕</button></div>`).join('');
+ const memH=mem.map(m=>`<div class='cr'><div style='flex:1;min-width:0'><b>${esc(m.name)}</b>${m.id===me?" <span class='mu'>(tú)</span>":''}</div><button class='x' data-fa='renm' data-e='${m.id}' aria-label='Renombrar'>✏️</button>${(!used(m.id)&&m.id!==me)?`<button class='x' data-fa='rmm' data-e='${m.id}' aria-label='Quitar miembro'>✕</button>`:''}</div>`).join('');
+ const id=S.fam.id;
+ o.innerHTML=`<div class='card' style='background:var(--tx);color:var(--bg);border:0'>
+ <div style='opacity:.75'>${esc(FD.name||'Familia')} · ${mem.length} ${mem.length===1?'miembro':'miembros'}</div>
+ <div style='opacity:.9;margin-top:4px'>${hi}</div>
+ ${net?`<b style='display:block;font:700 44px/1.15 "Bricolage Grotesque",system-ui;letter-spacing:-.03em;font-variant-numeric:tabular-nums'>${mh(Math.abs(net))}</b>`:''}
+ <div style='opacity:.7;font-size:13px;margin-top:12px'>Gasto total ${eur(c.tot)} · Has pagado ${eur(c.paid[me])} · Tu parte ${eur(c.share[me])}</div></div>
+ <button class='pri' data-fa='add' style='width:100%;margin-bottom:14px'>＋ Nuevo gasto</button>
+ <div class='card'><b>Liquidación</b><div class='mu'>Con estos pagos todos quedáis a cero, con el mínimo de transferencias. Pulsa «Pagado» cuando se haga cada uno.</div><div style='margin-top:8px'>${planH}</div>${plan.length?`<p style='margin:10px 0 0'><button data-fa='copy'>📋 Copiar liquidación</button></p>`:''}</div>
+ <div class='card'><b>Saldo de cada uno</b><div style='margin-top:6px'>${balH}</div></div>
+ <div class='card'><b>Gastos y pagos</b><div class='mu'>Toca un gasto para editarlo o borrarlo.</div><div style='margin-top:6px'>${rowH||"<div class='empty'>Aún no hay gastos</div>"}</div></div>
+ <div class='card'><b>Miembros</b><div class='mu'>Añade a quien quieras. Solo se puede quitar a quien aún no tiene gastos ni pagos.</div><div style='margin-top:6px'>${memH}</div><div class='row' style='margin-top:10px'><input id='famAdd' placeholder='Nombre del nuevo miembro'><button class='pri' data-fa='addm' style='flex:none'>Añadir</button></div></div>
+ <div class='card'><b>Grupo</b><div class='mu'>Código para que se una el resto</div><div style='font:700 24px "Bricolage Grotesque",system-ui;letter-spacing:.08em;margin:6px 0 12px'>${id.slice(0,5)}-${id.slice(5)}</div><div class='row'><button data-fa='copycode'>Copiar código</button><button data-fa='leave'>Salir del grupo</button></div></div>`;
+}
+// ----- hoja de gasto de grupo -----
+function updFamNote(){
+ const a=parseFloat($('famA').value)||0;
+ if(famMode==='eq'){const k=famSel.size;$('famNt').textContent=k?`${eur(a/k)} por persona (${k} ${k===1?'persona':'personas'})`:'Elige al menos a una persona'}
+ else{const s=r2(Object.values(famCu).reduce((t,v)=>t+(parseFloat(v)||0),0)),d=r2(a-s);$('famNt').textContent=d===0&&a>0?'✓ Los importes cuadran con el total':d>0?`Faltan ${eur(d)} por asignar`:`Te pasas ${eur(-d)}`}
+}
+function famDrawSheet(){
+ const mem=famMem(),me=S.fam.me;
+ $('famPay').innerHTML=mem.map(m=>`<button type="button" class="chip${famPayer===m.id?' on':''}" data-fk="pay" data-fv="${m.id}">${esc(m.name)}${m.id===me?' (yo)':''}</button>`).join('');
+ $('famMd').innerHTML=[['eq','Por igual'],['cu','Por importes']].map(([k,n])=>`<button type="button" class="chip${famMode===k?' on':''}" data-fk="mode" data-fv="${k}">${n}</button>`).join('');
+ const pt=$('famPt');
+ if(famMode==='eq'){
+  $('famPl').textContent='Se reparte entre (toca para quitar o añadir)';
+  pt.className='chips';
+  pt.innerHTML=mem.map(m=>`<button type="button" class="chip${famSel.has(m.id)?' on':''}" data-fk="sel" data-fv="${m.id}">${esc(m.name)}</button>`).join('')+`<button type="button" class="chip ap" data-fk="all" data-fv="">Todos</button>`;
+ }else{
+  $('famPl').textContent='Importe de cada uno (€)';
+  pt.className='';
+  pt.innerHTML=mem.map(m=>`<div class="row" style="align-items:center;margin-top:8px"><span style="flex:1.2;min-width:0">${esc(m.name)}</span><input type="number" inputmode="decimal" min="0" step="0.01" data-fcu="${m.id}" value="${esc(famCu[m.id]||'')}" placeholder="0,00"></div>`).join('');
+ }
+ updFamNote();
+}
+function famOpenSheet(id){
+ const x=id?(FD.exps||[]).find(e=>e.id===id):null,mem=famMem();
+ famEdit=x?x.id:null;
+ $('famT').textContent=x?'Editar gasto':'Nuevo gasto';
+ $('famA').value=x?x.amount:'';$('famC').value=x?(x.desc||''):'';$('famD').value=x?x.date:today();
+ famPayer=x&&mem.some(m=>m.id===x.payer)?x.payer:S.fam.me;
+ famMode='eq';famSel=new Set(mem.map(m=>m.id));famCu={};
+ if(x){
+  const ids=Object.keys(x.sh||{});famSel=new Set(ids);
+  const t=famShares(x.amount);
+  if(!t||!famSame(t,x.sh)){famMode='cu';ids.forEach(k=>famCu[k]=String(x.sh[k]))}
+ }
+ $('famDel').hidden=!x;famDrawSheet();$('famsh').hidden=false;if(!x)$('famA').focus();
+}
+async function famSave(){
+ const a=Math.round(parseFloat($('famA').value)*100)/100;
+ if(!(a>0)){shake($('famA'));$('famA').focus();return}
+ if(!famPayer){toast('Elige quién ha pagado');return}
+ const sh=famShares(a);
+ if(!sh){toast(famMode==='eq'?'Elige al menos a una persona':'Los importes no suman el total');return}
+ const x={id:famEdit||uid(),desc:$('famC').value.trim(),amount:a,date:$('famD').value||today(),payer:famPayer,sh};
+ const edit=famEdit;$('famsh').hidden=true;buzz();
+ if(edit){try{await famTx(d=>({exps:(d.exps||[]).map(e=>e.id===edit?x:e)}))}catch(e){toast('No se pudieron guardar los cambios. Revisa la conexión.')}}
+ else M.FS.updateDoc(famRef,{exps:M.FS.arrayUnion(x)}).catch(()=>toast('No se pudo guardar'));
+}
+$('famSave').onclick=famSave;
+$('famCancel').onclick=()=>$('famsh').hidden=true;
+$('famDel').onclick=()=>{
+ const id=famEdit,o=(FD.exps||[]).find(e=>e.id===id);$('famsh').hidden=true;if(!o)return;
+ M.FS.updateDoc(famRef,{exps:M.FS.arrayRemove(o)}).then(()=>toast('Gasto borrado',()=>M.FS.updateDoc(famRef,{exps:M.FS.arrayUnion(o)}))).catch(()=>toast('No se pudo borrar'));
+};
+$('famsh').addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.fcu;if(k)famCu[k]=e.target.value;updFamNote()});
+$('famsh').addEventListener('click',e=>{
+ if(e.target.id==='famsh'){$('famsh').hidden=true;return}
+ const t=e.target.closest('[data-fk]');if(!t)return;
+ const k=t.dataset.fk,v=t.dataset.fv;
+ if(k==='pay')famPayer=v;
+ if(k==='mode'&&v!==famMode){
+  if(v==='cu'){const a=parseFloat($('famA').value)||0,s=a>0?famShares(a):null;famCu={};if(s)Object.keys(s).forEach(i=>famCu[i]=String(s[i]))}
+  famMode=v;
+ }
+ if(k==='sel'){if(famSel.has(v))famSel.delete(v);else famSel.add(v)}
+ if(k==='all')famSel=new Set(famMem().map(m=>m.id));
+ famDrawSheet();
+});
+// ----- acciones del grupo -----
+$('famc').addEventListener('click',async e=>{
+ const t=e.target.closest('[data-fa]');if(!t)return;const a=t.dataset.fa,FS=M.FS;
+ if(a==='login'){try{await M.AU.signInWithPopup(auth,new M.AU.GoogleAuthProvider());famOpen()}catch(x){toast('No se pudo iniciar sesión')}}
+ if(a==='create'){
+  const gn=$('fgn').value.trim()||'Familia',n1=$('fn1').value.trim();
+  if(!n1)return toast('Escribe tu nombre');
+  const names=[n1,...$('fnm').value.split(/[,;\n]+/).map(s=>s.trim()).filter(Boolean)];
+  if(new Set(names.map(s=>s.toLowerCase())).size!==names.length)return toast('Hay nombres repetidos');
+  const members=names.map(n=>({id:uid(),name:n})),id=gcode();
+  try{await FS.setDoc(FS.doc(db,'grupos',id),{kind:'familia',name:gn,members,exps:[],pays:[]});S.fam={id,me:members[0].id};save();buzz();famOpen()}
+  catch(x){toast('No se pudo crear el grupo. Revisa la conexión.')}
+ }
+ if(a==='join'){
+  const id=$('fcode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  try{const g=await FS.getDoc(FS.doc(db,'grupos',id));if(!g.exists())return toast('Código no encontrado');const d=g.data();if(d.kind!=='familia')return toast('Ese código es de un grupo de Pareja');famPend={id,name:d.name||'Familia',members:d.members||[]};famDraw()}
+  catch(x){toast('No se pudo comprobar el código')}
+ }
+ if(a==='cancelJoin'){famPend=null;famDraw()}
+ if(a==='iam'){S.fam={id:famPend?famPend.id:S.fam.id,me:t.dataset.id};famPend=null;save();famOpen()}
+ if(a==='iamnew'){
+  const n=$('fnew').value.trim();if(!n)return toast('Escribe tu nombre');
+  if(famPend.members.some(m=>m.name.toLowerCase()===n.toLowerCase()))return toast('Ya hay alguien con ese nombre: elígelo arriba');
+  const m={id:uid(),name:n},id=famPend.id;
+  try{await FS.updateDoc(FS.doc(db,'grupos',id),{members:FS.arrayUnion(m)});S.fam={id,me:m.id};famPend=null;save();famOpen()}
+  catch(x){toast('No se pudo unir al grupo')}
+ }
+ if(a==='add')famOpenSheet();
+ if(a==='edit')famOpenSheet(t.dataset.e);
+ if(a==='paid'){
+  const p={id:uid(),from:t.dataset.from,to:t.dataset.to,amount:+t.dataset.amt,date:today()};
+  FS.updateDoc(famRef,{pays:FS.arrayUnion(p)}).then(()=>{buzz();toast('Pago registrado',()=>FS.updateDoc(famRef,{pays:FS.arrayRemove(p)}))}).catch(()=>toast('No se pudo guardar'));
+ }
+ if(a==='delpay'){
+  const o=(FD.pays||[]).find(x=>x.id===t.dataset.e);if(!o)return;
+  FS.updateDoc(famRef,{pays:FS.arrayRemove(o)}).then(()=>toast('Pago borrado',()=>FS.updateDoc(famRef,{pays:FS.arrayUnion(o)}))).catch(()=>toast('No se pudo borrar'));
+ }
+ if(a==='addm'){
+  const n=$('famAdd').value.trim();if(!n)return;
+  if(famMem().some(m=>m.name.toLowerCase()===n.toLowerCase()))return toast('Ya hay un miembro con ese nombre');
+  FS.updateDoc(famRef,{members:FS.arrayUnion({id:uid(),name:n})}).then(buzz).catch(()=>toast('No se pudo añadir'));
+ }
+ if(a==='rmm'){
+  const m=famMem().find(x=>x.id===t.dataset.e);if(!m||!confirm('¿Quitar a '+m.name+' del grupo?'))return;
+  FS.updateDoc(famRef,{members:FS.arrayRemove(m)}).catch(()=>toast('No se pudo quitar'));
+ }
+ if(a==='renm'){
+  const id=t.dataset.e,m=famMem().find(x=>x.id===id);if(!m)return;
+  const n=(prompt('Nuevo nombre:',m.name)||'').trim();if(!n||n===m.name)return;
+  if(famMem().some(x=>x.id!==id&&x.name.toLowerCase()===n.toLowerCase()))return toast('Ya hay un miembro con ese nombre');
+  try{await famTx(d=>({members:(d.members||[]).map(x=>x.id===id?{...x,name:n}:x)}))}catch(x){toast('No se pudo renombrar')}
+ }
+ if(a==='copy'){if(navigator.clipboard)navigator.clipboard.writeText(famText());toast('Liquidación copiada')}
+ if(a==='copycode'){if(navigator.clipboard)navigator.clipboard.writeText(S.fam.id);toast('Código copiado')}
+ if(a==='leave'&&confirm('¿Salir del grupo? Los gastos siguen guardados para el resto.')){delete S.fam;save();famOpen()}
+});
 // ----- Tema -----
 const TM=[['sys','🖥️ Sistema'],['time','🕗 Por horas'],['light','☀️ Claro'],['dark','🌙 Oscuro']];
 const AC=[['verde','Verde'],['azul','Azul'],['violeta','Violeta'],['naranja','Naranja'],['rosa','Rosa']];
@@ -1353,7 +1645,7 @@ async function cloudPull(){
   const d=sn.data(),c=cinfo(d);
   if((SY.dirty||!SY.base)&&!confirm(`Vas a cargar la versión de la nube (${c.n} movimientos, guardada ${ftime(c.t)}${c.dev?' desde '+c.dev:''}). Los datos de este dispositivo (${S.movs.length} movimientos${SY.dirty?', con cambios sin guardar':''}) se REEMPLAZAN. ¿Continuar?`)){cbusy=false;drawCloud();return}
   const oS=S,oY={...SY};
-  S={movs:d.movs||[],folders:d.folders||[],cats:d.cats||oS.cats,grp:d.grp,rec:d.rec||[],skip:d.skip||[],budgets:d.budgets||{},sh:d.sh||{}};
+  S={movs:d.movs||[],folders:d.folders||[],cats:d.cats||oS.cats,grp:d.grp,fam:d.fam,rec:d.rec||[],skip:d.skip||[],budgets:d.budgets||{},sh:d.sh||{}};
   ensureG();store();
   SY.base=c.v;SY.dirty=false;SY.st=Date.now();ysave();CL=c;
   watchGrp();refresh();buzz();
@@ -1396,14 +1688,14 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ref)cloud
 (function(){const vv=window.visualViewport;if(!vv)return;
  const fit=()=>{const r=document.documentElement.style;r.setProperty('--vh',vv.height+'px');r.setProperty('--vt',vv.offsetTop+'px')};
  vv.addEventListener('resize',fit);vv.addEventListener('scroll',fit);fit();
- document.addEventListener('focusin',e=>{const t=e.target;if(!t.closest||!t.closest('#sheet,#ssh,#csh,#ash,#acm'))return;
+ document.addEventListener('focusin',e=>{const t=e.target;if(!t.closest||!t.closest('#sheet,#ssh,#csh,#ash,#acm,#famsh'))return;
   setTimeout(()=>{fit();try{t.scrollIntoView({block:'center',behavior:'smooth'})}catch(x){}},320)});
  document.addEventListener('focusout',()=>setTimeout(()=>{fit();if(!document.activeElement||document.activeElement===document.body)window.scrollTo(0,0)},120));
 })();
 if('serviceWorker' in navigator){
  let swr=null,ver=null,busy=false;
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>swr=r).catch(()=>{});
- const reload=()=>{if(['sheet','ssh','csh','ash','acm','cls'].every(i=>$(i).hidden))location.reload();else setTimeout(reload,4000)};
+ const reload=()=>{if(['sheet','ssh','csh','ash','acm','famsh','cls'].every(i=>$(i).hidden))location.reload();else setTimeout(reload,4000)};
  const chk=async()=>{try{
   const t=await(await fetch('index.html',{cache:'no-store'})).text();let h=0;
   for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;

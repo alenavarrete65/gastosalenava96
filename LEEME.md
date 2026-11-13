@@ -33,7 +33,15 @@ Abre la URL en cada dispositivo, pulsa **☁️ Iniciar sesión** con la misma c
 Si ya habías publicado las reglas antes, vuelve a **Firestore → Reglas**, pega el contenido nuevo de `firestore.rules` y pulsa **Publicar**. Sin esto, el botón «👥 Pareja» no podrá crear ni unirse a grupos.
 Si reutilizas el proyecto de OpoTest, AÑADE el bloque `match /grupos/{gid}` a tus reglas en vez de reemplazarlas.
 
+## Grupos: Pareja y Familia
+El botón de arriba «👥 Grupos» abre dos pestañas:
+- **Pareja**: igual que antes.
+- **Familia** (estilo Tricount): creas un grupo con los miembros que quieras (sin límite, y puedes añadir o quitar después), apuntáis gastos indicando quién pagó y cómo se reparte (por igual entre los que elijas, o por importes), y la app calcula el saldo de cada uno y la liquidación con el mínimo de pagos. Pulsa «✓ Pagado» al hacer cada pago; también puedes copiar la liquidación para mandarla. No hay cuenta conjunta ni toca tus cuentas.
+Para que se una el resto, comparte el código del grupo: cada uno entra con su cuenta de Google y elige quién es. Usa la colección `grupos` que ya existe, así que NO hace falta cambiar las reglas de Firestore.
+
 ## Novedades de esta versión
+- **Apartados**: al apuntar un gasto o ingreso de un apartado aparece un botón para que además reste o sume de la cuenta elegida (apagado por defecto).
+- **Cuentas**: cada cuenta muestra sus últimos 5 movimientos, con «Ver todos» para filtrar la lista por esa cuenta.
 - **Cuentas** (antes «Carpetas»): efectivo y bancos con saldo inicial, tarjetas de color, transferencias entre cuentas y totales «Total» / «Solo bancos».
 - **Apartados independientes** (Categorías → «＋ Nuevo apartado»): como «Autoescuela». Llevan su propio saldo y NO cuentan en el saldo general ni en las cuentas. Puedes crear los que quieras.
 - Editar movimientos (toca uno) y deslizar: derecha = editar, izquierda = borrar.
