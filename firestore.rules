@@ -1,11 +1,14 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Datos personales: cada usuario solo accede a lo suyo
-    match /gastos/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    // Datos personales: cada usuario solo accede a lo suyo.
+    // Documento principal gastos/{uid} y un documento por mes gastos/{uid}_AAAA-MM
+    match /gastos/{docId} {
+      allow read, write: if request.auth != null
+        && (docId == request.auth.uid
+            || docId.matches(request.auth.uid + '_[0-9]{4}-[0-9]{2}'));
     }
-    // Gastos compartidos: solo se puede abrir un grupo conociendo su código (no se puede listar ni borrar)
+    // Gastos compartidos (Pareja y Familia): solo se puede abrir un grupo conociendo su código (no se puede listar ni borrar)
     match /grupos/{gid} {
       allow get, create, update: if request.auth != null;
       allow list, delete: if false;

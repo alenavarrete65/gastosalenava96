@@ -202,6 +202,8 @@ body,.card{transition:background-color .5s,color .5s,border-color .5s}
 @keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 @keyframes shk{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.calcb{display:flex;gap:6px;margin-top:6px}
+.calcb button{flex:1;padding:6px 0;font-size:17px}
 .rc{margin-top:12px;border-top:1px solid #ffffff40;padding-top:8px}
 .rh{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:#ffffffc4}
 .rh button{padding:4px 10px;font-size:12px;text-transform:none;letter-spacing:0}
@@ -277,6 +279,7 @@ html,body,button,input,select,label,.mov,.chip{touch-action:manipulation}
 <div class="row" style="align-items:center;margin-bottom:14px"><button id="shx" style="flex:none">←</button><h1 style="margin:0;font-size:24px">Gastos compartidos</h1></div>
 <div class="row" id="shtabs" style="margin-bottom:14px"><button class="chip on" data-shtab="pareja" style="justify-content:center">👥 Pareja</button><button class="chip" data-shtab="familia" style="justify-content:center">👪 Familia</button></div>
 <div id="shc"></div>
+<div id="famb" hidden></div>
 <div id="famc" hidden></div>
 </div></div>
 <div id="ssh" hidden><div class="card">
@@ -293,7 +296,7 @@ html,body,button,input,select,label,.mov,.chip{touch-action:manipulation}
 </div></div>
 <div id="famsh" hidden><div class="card">
 <b id="famT" style="font-size:18px">Nuevo gasto</b>
-<label>Importe (€)</label><input id="famA" type="number" inputmode="decimal" min="0" step="0.01">
+<label>Importe (€)</label><input id="famA" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00  (puedes sumar: 12+3,50)">
 <label>Concepto</label><input id="famC" placeholder="Ej. Cena, gasolina, regalo…">
 <label>Fecha</label><input id="famD" type="date">
 <label>¿Quién ha pagado?</label><div class="chips" id="famPay"></div>
@@ -312,7 +315,7 @@ html,body,button,input,select,label,.mov,.chip{touch-action:manipulation}
 <div class="eb" id="sht">Nuevo movimiento</div>
 <div class="seg" style="margin-top:8px"><button id="sg" class="on">Gasto</button><button id="si">Ingreso</button><button id="str">Transf.</button></div>
 <div class="apv out" id="apv">0,00 €</div>
-<label>Importe (€)</label><input id="a" type="number" inputmode="decimal" min="0" step="0.01">
+<label>Importe (€)</label><input id="a" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00  (puedes sumar: 12+3,50)">
 <div id="gcat"><label>Categoría</label><div class="chips" id="cats"></div><div class="mu" id="aph" hidden style="margin-top:8px">📂 Apartado independiente: lleva su propio saldo y no cuenta en tu saldo general. Con el botón de abajo decides si este movimiento también suma o resta de la cuenta.</div></div>
 <label id="dl">Fecha</label><input id="d" type="date">
 <label>Concepto</label><input id="c" placeholder="Ej. Gasolina, cuota del coche…">
@@ -363,7 +366,11 @@ const PAL=['#2f8a63','#3b7dd8','#8b5cf6','#e8892b','#e0558a','#14a3a3','#d8453b'
 let S={movs:[],folders:[]},tipo='gasto',cat='',last='',st=true,AN=true,ref=null,unsub=null,first=false,auth=null,db=null,M={};
 let editId=null,editRid=null,ph=null,phHas=false,phDel=false,tab=1,ftag='',akind='banco',aedit=null,acol='',cedit=null,cemo='',ccolor='',cap=false,saving=false;
 try{const r=localStorage.getItem(KEY);if(r)S=JSON.parse(r)}catch(e){}
-const norm=()=>{if(!S.movs)S.movs=[];if(!S.folders)S.folders=[];if(!S.rec)S.rec=[];if(!S.skip)S.skip=[];if(!S.budgets)S.budgets={};if(!S.sh)S.sh={}};
+const norm=()=>{if(!S.movs)S.movs=[];if(!S.folders)S.folders=[];if(!S.rec)S.rec=[];if(!S.skip)S.skip=[];if(!S.budgets)S.budgets={};if(!S.sh)S.sh={};
+ // grupos de Familia: S.fams = todos los grupos, S.fam = el que está abierto
+ if(!Array.isArray(S.fams))S.fams=[];
+ if(S.fam&&!S.fams.some(g=>g.id===S.fam.id))S.fams.push({...S.fam});
+ if(S.fam)S.fam=S.fams.find(g=>g.id===S.fam.id);else if(S.fams.length)S.fam=S.fams[0]};
 norm();
 const mk=a=>a.map(([id,e,name])=>({id,e,name}));
 const DEF=()=>({gasto:mk([['g-super','🛒','Supermercado'],['g-comida','🍽️','Comer fuera'],['g-transp','🚗','Transporte'],['g-hogar','🏠','Hogar'],['g-ocio','🎉','Ocio'],['g-salud','💊','Salud'],['g-ropa','👕','Ropa'],['g-otros','📦','Otros']]),ingreso:mk([['i-trabajo','💼','Trabajo'],['i-venta','🏷️','Ventas'],['i-regalo','🎁','Regalo'],['i-otros','📦','Otros']])});
@@ -425,13 +432,14 @@ function shFlows(){
  });
  return out;
 }
-function accStats(id){
+function accStats(id,upTo){
  const A=apSet();let i=0,g=0,ti=0,to=0,xi=0,xg=0;
  S.movs.forEach(x=>{
+  if(upTo&&x.date>upTo)return;
   if(x.type==='transfer'){if(x.to===id)ti+=x.amount;if(x.from===id)to+=x.amount;const t=jt(x);if(t==='ingreso'&&x.to===id)xi+=x.amount;if(t==='gasto'&&x.from===id)xg+=x.amount}
   else if(x.folder===id&&cnt(x,A)){if(x.type==='ingreso')i+=x.amount;else g+=x.amount}
  });
- shFlows().forEach(f=>{if(f.acc===id){if(f.amt<0)g-=f.amt;else i+=f.amt}});
+ shFlows().forEach(f=>{if(upTo&&f.date>upTo)return;if(f.acc===id){if(f.amt<0)g-=f.amt;else i+=f.amt}});
  const f=S.folders.find(z=>z.id===id)||{},open=f.open||0;
  return{i,g,ti,to,xi,xg,open,saldo:open+i-g+ti-to};
 }
@@ -585,6 +593,28 @@ function totCards(){
  const card=(t,sub,v,i,g)=>`<div class="card"><div class="eb">${t}</div><div class="mu">${sub}</div><div class="tv">${N(v,v<0?'out':'')}</div><div class="mu">↗ ${N(i,'in')}</div><div class="mu">↙ ${N(g,'out')}</div></div>`;
  return `<div class="tot">${card('Total','Efectivo + bancos (sin la conjunta)',tot,ti,tg)}${card('Solo bancos','Incluye la conjunta',bank,bi,bg)}</div><div class="mu" style="margin:-2px 0 12px">Los apartados independientes no cuentan aquí, salvo los movimientos que marques para sumar o restar de una cuenta.</div>`;
 }
+// objetivo de ahorro mensual: ingresos - gastos del mes (sin apartados) frente al objetivo
+function saveCard(){
+ const G=gm(),goal=S.sg||0,ym=$('fm').value||ym0(),now=new Date();
+ const sv=m=>{const L=G.filter(x=>x.date.startsWith(m));return r2(esum(L,'ingreso')-esum(L,'gasto'))};
+ const s=sv(ym),btn=`<button data-sg="1" style="padding:6px 12px;font-size:13px">${goal?'✏️ Objetivo':'＋ Fijar objetivo'}</button>`;
+ let body;
+ if(!goal)body=`<div class="mu" style="margin-top:6px">Fija cuánto quieres ahorrar al mes (ingresos − gastos) y verás aquí tu progreso. Este mes llevas <b class="${s<0?'out':'in'}">${eur(s)}</b>.</div>`;
+ else{
+  const p=Math.max(0,Math.min(100,s/goal*100)),done=s>=goal,hist=[];
+  for(let k=5;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1),m=d.getFullYear()+'-'+pad(d.getMonth()+1);hist.push(`<span class="ch">${MES[d.getMonth()].slice(0,3)} ${sv(m)>=goal?'✅':'❌'}</span>`)}
+  body=`<div class="tv" style="margin:8px 0 2px">${N(s,s<0?'out':done?'in':'')} <span class="mu">de ${eur(goal)}</span></div><div class="bar"><i style="width:0;background:${done?'var(--in)':'var(--ac)'}" data-w="${p}"></i></div>
+  <div class="mu">${done?'🎉 ¡Objetivo cumplido este mes!':s<0?'Este mes vas en negativo: gastas más de lo que ingresas.':`Te faltan ${eur(goal-s)} para llegar al objetivo.`}</div>
+  <div style="margin-top:8px;line-height:2.1">${hist.join('')}</div>`;
+ }
+ return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>🎯 Ahorro de ${mlabel(ym)}</b>${btn}</div>${body}</div>`;
+}
+function setSg(){
+ const v=prompt('Objetivo de ahorro mensual (€). Déjalo vacío o en 0 para quitarlo:',S.sg||'');
+ if(v===null)return;const n=pnum(v);
+ if(n>0)S.sg=Math.round(n*100)/100;else delete S.sg;
+ save();refresh();
+}
 function accCard(f,k){
  const s=accStats(f.id),c=fc(f.id),gen=f.id==='general';
  const mm=new Set(S.movs.filter(x=>x.type==='gasto'&&x.folder===f.id).map(x=>x.date.slice(0,7))).size;
@@ -593,11 +623,26 @@ function accCard(f,k){
  <div class="ah"><i class="ai">${f.kind==='efectivo'?'💶':f.kind==='conjunta'?'🤝':gen?'📦':'🏦'}</i><div style="flex:1;min-width:0"><div class="an">${esc(f.name)}</div><small>${f.kind==='efectivo'?'Efectivo':f.kind==='conjunta'?'Cuenta conjunta':gen?'Sin asignar':'Banco'}</small></div>${gen?'':`<button data-ea="${f.id}" aria-label="Editar cuenta">✏️</button>`}</div>
  <div class="ab">${N(s.saldo,s.saldo<0?'ng':'')}</div>
  <small>↗ ${eur(s.i)} · ↙ ${eur(s.g)}${s.ti||s.to?` · ⇄ ${eur(s.ti-s.to)}`:''}${s.open?` · inicial ${eur(s.open)}`:''}</small>
+ ${accSpark(f)}
  ${gen?'':`<div class="acts" style="margin-top:8px">${f.kind==='conjunta'?`<button data-load="${f.id}">＋ Cargar cuenta</button>`:''}<button data-adj="${f.id}">💰 Ajustar saldo real</button></div>`}
  ${f.goal?`<div class="bar"><i style="width:0" data-w="${Math.min(100,s.g/f.goal*100)}"></i></div><small>Pagado ${eur(s.g)} de ${eur(f.goal)} · faltan ${eur(Math.max(0,f.goal-s.g))}</small>`:''}
  ${(()=>{const ja=jointAcc();return ja&&ja.id===f.id&&jointSum()?`<div><small>🤝 Incluye ${eur(jointSum())} de gastos de Pareja pagados con la cuenta compartida</small></div>`:''})()}
  ${est?`<div><small>A este ritmo: ~${est} ${est===1?'mes':'meses'} para terminar</small></div>`:''}
  ${recHTML(f.id)}</div>`;
+}
+// mini gráfica: saldo de la cuenta al final de cada uno de los últimos 6 meses
+function accSpark(f){
+ const now=new Date(),ms=[],v=[];
+ for(let k=5;k>=0;k--){
+  const d=new Date(now.getFullYear(),now.getMonth()-k,1),e=new Date(d.getFullYear(),d.getMonth()+1,0);
+  ms.push(MES[d.getMonth()].slice(0,3));
+  v.push(k===0?accStats(f.id).saldo:accStats(f.id,d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(e.getDate())).saldo);
+ }
+ const mn=Math.min(...v),mx=Math.max(...v),rg=(mx-mn)||1,W=300,H=70,l=10,r=10,t=8,b=18;
+ const px=i=>l+i*(W-l-r)/(v.length-1),py=y=>mx===mn?(t+(H-t-b)/2):t+(H-t-b)*(1-(y-mn)/rg);
+ const pts=v.map((y,i)=>[px(i),py(y)]),d='M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L'),lp=pts[pts.length-1];
+ const labs=ms.map((m,i)=>`<text x='${px(i).toFixed(1)}' y='${H-4}' text-anchor='middle' font-size='9' fill='#fff' fill-opacity='.7'>${m}</text>`).join('');
+ return `<svg viewBox='0 0 ${W} ${H}' width='100%' role='img' aria-label='Saldo de ${esc(f.name)} en los últimos 6 meses' style='display:block;margin-top:10px'><path d='${d} L${px(5).toFixed(1)} ${H-b} L${px(0).toFixed(1)} ${H-b} Z' fill='#fff' fill-opacity='.14'/><path d='${d}' fill='none' stroke='#fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/><circle cx='${lp[0].toFixed(1)}' cy='${lp[1].toFixed(1)}' r='3.4' fill='#fff'/>${labs}</svg>`;
 }
 // últimos movimientos que han tocado el saldo de una cuenta
 function accRecent(id,n){
@@ -701,7 +746,7 @@ function render(){
  $('mbal').innerHTML=mh(i-g);$('mbal').className=i-g<0?'out':'in';
  $('list').innerHTML=L.length?L.map((x,k)=>rowHTML(x,k)).join(''):'<div class="empty">Aún no hay movimientos. Pulsa «+ Añadir».</div>';
  last='';st=false;
- $('gen').innerHTML=totCards();
+ $('gen').innerHTML=totCards()+saveCard();
  $('folders').innerHTML=vis().map((f,k)=>accCard(f,k)).join('');
  $('evo').innerHTML=evoCard()+barsCard();
  $('catv').innerHTML=catView(L);
@@ -757,7 +802,26 @@ function affUI(){
 }
 $('afb').onclick=()=>{affOn=!affOn;affUI()};
 $('f').addEventListener('change',affUI);
-const updApv=()=>{const v=parseFloat($('a').value)||0,el=$('apv');el.className='apv '+(tipo==='gasto'?'out':tipo==='ingreso'?'in':'trc');tween(el,v)};
+// calculadora sencilla para los campos de importe: admite + − × ÷ y paréntesis (sin usar eval)
+function calc(s){
+ s=String(s==null?'':s).replace(/\s/g,'').replace(/,/g,'.').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+ if(!s||!/^[0-9.+\-*/()]+$/.test(s))return NaN;
+ let i=0;
+ const expr=()=>{let v=term();while(s[i]==='+'||s[i]==='-'){const o=s[i++],r=term();v=o==='+'?v+r:v-r}return v};
+ const term=()=>{let v=fac();while(s[i]==='*'||s[i]==='/'){const o=s[i++],r=fac();v=o==='*'?v*r:v/r}return v};
+ const fac=()=>{
+  if(s[i]==='-'){i++;return -fac()}
+  if(s[i]==='+'){i++;return fac()}
+  if(s[i]==='('){i++;const v=expr();if(s[i]!==')')return NaN;i++;return v}
+  const m=/^\d+\.?\d*|^\.\d+/.exec(s.slice(i));if(!m)return NaN;i+=m[0].length;return parseFloat(m[0]);
+ };
+ const v=expr();return i===s.length&&isFinite(v)?v:NaN;
+}
+function calcBar(id){
+ $(id).insertAdjacentHTML('afterend',`<div class="calcb" data-for="${id}">${[['+','＋'],['-','−'],['*','×'],['/','÷'],['=','=']].map(([o,t])=>`<button type="button" data-op="${o}" aria-label="${o==='='?'Calcular':'Operador '+t}">${t}</button>`).join('')}</div>`);
+}
+calcBar('a');calcBar('famA');
+const updApv=()=>{const v=calc($('a').value)||0,el=$('apv');el.className='apv '+(tipo==='gasto'?'out':tipo==='ingreso'?'in':'trc');tween(el,v)};
 function drawCats(){
  $('cats').innerHTML=(tipo==='transfer'?[]:S.cats[tipo]).map(c=>`<button class="chip${c.id===cat?' on':''}${c.ap?' ap':''}" data-c="${c.id}">${c.e} ${esc(c.name)}</button>`).join('')+'<button class="chip" data-c="+">＋ Nueva</button>';
  const c=catById(cat);$('aph').hidden=!(c&&c.ap);affUI();
@@ -811,7 +875,7 @@ function alertsAfter(m,before){
 }
 async function saveMov(){
  if(saving)return;
- const a=Math.round(parseFloat($('a').value)*100)/100;
+ const a=Math.round(calc($('a').value)*100)/100;
  if(!(a>0)){shake($('a'));$('a').focus();return}
  const date=$('d').value||today(),concept=$('c').value.trim(),tr=tipo==='transfer';
  let m;
@@ -1024,6 +1088,13 @@ document.addEventListener('click',e=>{
  if(el=q('[data-apadd]')){openSheet({cat:el.dataset.apadd});return}
  if(el=q('[data-accview]')){$('ff').value=el.dataset.accview;$('fc').value='';$('fm').value='';$('q').value='';ftag='';setTab(1);window.scrollTo({top:0});return}
  if(el=q('[data-apview]')){$('fc').value=el.dataset.apview;$('ff').value='';$('fm').value='';$('q').value='';ftag='';setTab(1);window.scrollTo({top:0});return}
+ if(el=q('[data-op]')){
+  const inp=$(el.closest('[data-for]').dataset.for),op=el.dataset.op;
+  if(op==='='){const v=calc(inp.value.replace(/[+\-*/×÷−]\s*$/,''));if(!isNaN(v))inp.value=String(Math.round(v*100)/100)}
+  else{let s=inp.value.replace(/[+\-*/×÷−]\s*$/,'');if(!s&&op!=='-')return;inp.value=s+op}
+  inp.dispatchEvent(new Event('input',{bubbles:true}));inp.focus();return;
+ }
+ if(el=q('[data-sg]')){setSg();return}
  if(el=q('[data-bud]')){setBud(el.dataset.bud);return}
  if(el=q('[data-delrec]')){
   const id=el.dataset.delrec,r=S.rec.find(x=>x.id===id);if(!r)return;
@@ -1302,7 +1373,7 @@ $('sh').onclick=async e=>{
 };
 
 // ----- Familia: gastos a repartir entre varios (estilo Tricount) -----
-let FD=null,famRef=null,famUn=null,famPend=null,shTab='pareja',famEdit=null,famPayer='',famMode='eq',famSel=new Set(),famCu={};
+let famAdding=false,FD=null,famRef=null,famUn=null,famPend=null,shTab='pareja',famEdit=null,famPayer='',famMode='eq',famSel=new Set(),famCu={};
 const famMem=()=>(FD&&FD.members)||[];
 const famName=id=>{const m=famMem().find(x=>x.id===id);return m?m.name:'(eliminado)'};
 const famSame=(a,b)=>{const ka=Object.keys(a),kb=Object.keys(b||{});return ka.length===kb.length&&ka.every(k=>b&&Math.abs(a[k]-b[k])<.005)};
@@ -1351,13 +1422,23 @@ function famText(){
  const c=famCalc(),plan=famPlan(c.n);
  return (FD.name||'Familia')+' · liquidación\nTotal gastado: '+eur(c.tot)+'\n\n'+(plan.length?plan.map(p=>'• '+famName(p.from)+' paga '+eur(p.amount)+' a '+famName(p.to)).join('\n'):'Todo saldado ✓');
 }
+// varios grupos: se guardan en S.fams y se elige cuál ver con las pastillas de arriba
+function famJoin(id,me,name){
+ let g=S.fams.find(x=>x.id===id);
+ if(g){g.me=me;if(name)g.name=name}else{g={id,me,name:name||'Familia'};S.fams.push(g)}
+ S.fam=g;famAdding=false;save();
+}
+function famLeave(){
+ S.fams=S.fams.filter(g=>g.id!==S.fam.id);S.fam=S.fams[0];famAdding=false;famPend=null;save();famOpen();
+}
+const famBar=()=>S.fams.length?`<div class='chips' style='margin:0 0 12px'>${S.fams.map(g=>`<button class='chip${S.fam&&g.id===S.fam.id&&!famAdding?' on':''}' data-fa='pick' data-id='${g.id}'>${esc(g.name||'Grupo')}</button>`).join('')}<button class='chip${famAdding?' on':''}' data-fa='newgrp'>＋ Otro grupo</button></div>`:'';
 async function famTx(fn){
  await M.FS.runTransaction(db,async tx=>{const sn=await tx.get(famRef);if(!sn.exists())throw new Error('nogroup');tx.update(famRef,fn(sn.data()))});
 }
 function setShTab(t){
  shTab=t;
  document.querySelectorAll('[data-shtab]').forEach(b=>b.classList.toggle('on',b.dataset.shtab===t));
- $('shc').hidden=t!=='pareja';$('famc').hidden=t!=='familia';
+ $('shc').hidden=t!=='pareja';$('famc').hidden=t!=='familia';$('famb').hidden=t!=='familia';
  if(t==='pareja')openShared();else famOpen();
 }
 function openGroups(){if(!S.grp&&S.fam)shTab='familia';$('sh').hidden=false;setShTab(shTab)}
@@ -1368,14 +1449,15 @@ function famOpen(){
  FD=null;famRef=null;
  if(auth&&auth.currentUser&&S.fam){
   famRef=M.FS.doc(db,'grupos',S.fam.id);
-  famUn=M.FS.onSnapshot(famRef,x=>{FD=x.exists()?x.data():null;famDraw()},()=>{FD=null;famDraw()});
+  famUn=M.FS.onSnapshot(famRef,x=>{FD=x.exists()?x.data():null;if(FD&&FD.name&&S.fam&&S.fam.name!==FD.name){S.fam.name=FD.name;store()}famDraw()},()=>{FD=null;famDraw()});
  }else famDraw();
 }
 function famDraw(){
  const o=$('famc'),u=auth&&auth.currentUser;
+ $('famb').innerHTML=u?famBar():'';
  if(!auth){o.innerHTML="<div class='card'>Para compartir gastos hace falta la sincronización: pega tu configuración de Firebase en <b>index.html</b> (mira el LEEME).</div>";return}
  if(!u){o.innerHTML="<div class='card'><b>Inicia sesión</b><p class='mu'>Cada miembro entra con su cuenta de Google y os unís al grupo con un código.</p><button class='pri' data-fa='login'>Iniciar sesión con Google</button></div>";return}
- if(!S.fam){
+ if(!S.fam||famAdding){
   o.innerHTML=famPend
    ?`<div class='card'><b>¿Quién eres en «${esc(famPend.name)}»?</b><div class='chips'>${famPend.members.map(m=>`<button class='chip' data-fa='iam' data-id='${m.id}'>${esc(m.name)}</button>`).join('')}</div><label>¿No estás en la lista? Escribe tu nombre</label><input id='fnew' placeholder='Tu nombre'><div class='row' style='margin-top:12px'><button data-fa='cancelJoin'>Cancelar</button><button class='pri' data-fa='iamnew'>Unirme como nuevo</button></div></div>`
    :`<div class='card'><b>Crear grupo de gastos</b><div class='mu'>Para familia, viajes, piso compartido… Sin cuenta conjunta: solo apuntáis los gastos y al final se liquida.</div><label>Nombre del grupo</label><input id='fgn' value='Familia' placeholder='Ej. Familia, Viaje a Roma…'><label>Tu nombre</label><input id='fn1' placeholder='Ej. Alejandro'><label>Otros miembros (opcional, separados por comas)</label><input id='fnm' placeholder='Ej. Mamá, Papá, Lucía'><div class='mu' style='margin-top:6px'>Puedes añadir o quitar miembros cuando quieras, sin límite.</div><p><button class='pri' data-fa='create'>Crear grupo</button></p></div><div class='card'><b>¿Ya te han dado un código?</b><label>Código</label><input id='fcode' placeholder='XXXXX-XXXXX' autocapitalize='characters'><p><button data-fa='join'>Unirme</button></p></div>`;
@@ -1409,11 +1491,11 @@ function famDraw(){
  <div class='card'><b>Saldo de cada uno</b><div style='margin-top:6px'>${balH}</div></div>
  <div class='card'><b>Gastos y pagos</b><div class='mu'>Toca un gasto para editarlo o borrarlo.</div><div style='margin-top:6px'>${rowH||"<div class='empty'>Aún no hay gastos</div>"}</div></div>
  <div class='card'><b>Miembros</b><div class='mu'>Añade a quien quieras. Solo se puede quitar a quien aún no tiene gastos ni pagos.</div><div style='margin-top:6px'>${memH}</div><div class='row' style='margin-top:10px'><input id='famAdd' placeholder='Nombre del nuevo miembro'><button class='pri' data-fa='addm' style='flex:none'>Añadir</button></div></div>
- <div class='card'><b>Grupo</b><div class='mu'>Código para que se una el resto</div><div style='font:700 24px "Bricolage Grotesque",system-ui;letter-spacing:.08em;margin:6px 0 12px'>${id.slice(0,5)}-${id.slice(5)}</div><div class='row'><button data-fa='copycode'>Copiar código</button><button data-fa='leave'>Salir del grupo</button></div></div>`;
+ <div class='card'><b>Grupo</b><div class='mu'>Código para que se una el resto</div><div style='font:700 24px "Bricolage Grotesque",system-ui;letter-spacing:.08em;margin:6px 0 12px'>${id.slice(0,5)}-${id.slice(5)}</div><div class='row'><button data-fa='copycode'>Copiar código</button><button data-fa='rengrp'>✏️ Renombrar</button></div><div class='row' style='margin-top:8px'><button data-fa='leave'>Salir del grupo</button></div></div>`;
 }
 // ----- hoja de gasto de grupo -----
 function updFamNote(){
- const a=parseFloat($('famA').value)||0;
+ const a=calc($('famA').value)||0;
  if(famMode==='eq'){const k=famSel.size;$('famNt').textContent=k?`${eur(a/k)} por persona (${k} ${k===1?'persona':'personas'})`:'Elige al menos a una persona'}
  else{const s=r2(Object.values(famCu).reduce((t,v)=>t+(parseFloat(v)||0),0)),d=r2(a-s);$('famNt').textContent=d===0&&a>0?'✓ Los importes cuadran con el total':d>0?`Faltan ${eur(d)} por asignar`:`Te pasas ${eur(-d)}`}
 }
@@ -1448,7 +1530,7 @@ function famOpenSheet(id){
  $('famDel').hidden=!x;famDrawSheet();$('famsh').hidden=false;if(!x)$('famA').focus();
 }
 async function famSave(){
- const a=Math.round(parseFloat($('famA').value)*100)/100;
+ const a=Math.round(calc($('famA').value)*100)/100;
  if(!(a>0)){shake($('famA'));$('famA').focus();return}
  if(!famPayer){toast('Elige quién ha pagado');return}
  const sh=famShares(a);
@@ -1471,7 +1553,7 @@ $('famsh').addEventListener('click',e=>{
  const k=t.dataset.fk,v=t.dataset.fv;
  if(k==='pay')famPayer=v;
  if(k==='mode'&&v!==famMode){
-  if(v==='cu'){const a=parseFloat($('famA').value)||0,s=a>0?famShares(a):null;famCu={};if(s)Object.keys(s).forEach(i=>famCu[i]=String(s[i]))}
+  if(v==='cu'){const a=calc($('famA').value)||0,s=a>0?famShares(a):null;famCu={};if(s)Object.keys(s).forEach(i=>famCu[i]=String(s[i]))}
   famMode=v;
  }
  if(k==='sel'){if(famSel.has(v))famSel.delete(v);else famSel.add(v)}
@@ -1479,7 +1561,7 @@ $('famsh').addEventListener('click',e=>{
  famDrawSheet();
 });
 // ----- acciones del grupo -----
-$('famc').addEventListener('click',async e=>{
+const famClick=async e=>{
  const t=e.target.closest('[data-fa]');if(!t)return;const a=t.dataset.fa,FS=M.FS;
  if(a==='login'){try{await M.AU.signInWithPopup(auth,new M.AU.GoogleAuthProvider());famOpen()}catch(x){toast('No se pudo iniciar sesión')}}
  if(a==='create'){
@@ -1488,7 +1570,7 @@ $('famc').addEventListener('click',async e=>{
   const names=[n1,...$('fnm').value.split(/[,;\n]+/).map(s=>s.trim()).filter(Boolean)];
   if(new Set(names.map(s=>s.toLowerCase())).size!==names.length)return toast('Hay nombres repetidos');
   const members=names.map(n=>({id:uid(),name:n})),id=gcode();
-  try{await FS.setDoc(FS.doc(db,'grupos',id),{kind:'familia',name:gn,members,exps:[],pays:[]});S.fam={id,me:members[0].id};save();buzz();famOpen()}
+  try{await FS.setDoc(FS.doc(db,'grupos',id),{kind:'familia',name:gn,members,exps:[],pays:[]});famJoin(id,members[0].id,gn);buzz();famOpen()}
   catch(x){toast('No se pudo crear el grupo. Revisa la conexión.')}
  }
  if(a==='join'){
@@ -1497,12 +1579,18 @@ $('famc').addEventListener('click',async e=>{
   catch(x){toast('No se pudo comprobar el código')}
  }
  if(a==='cancelJoin'){famPend=null;famDraw()}
- if(a==='iam'){S.fam={id:famPend?famPend.id:S.fam.id,me:t.dataset.id};famPend=null;save();famOpen()}
+ if(a==='iam'){famJoin(famPend?famPend.id:S.fam.id,t.dataset.id,famPend?famPend.name:'');famPend=null;famOpen()}
+ if(a==='pick'){S.fam=S.fams.find(g=>g.id===t.dataset.id)||S.fam;famAdding=false;famPend=null;store();famOpen()}
+ if(a==='newgrp'){famAdding=true;famPend=null;famDraw()}
+ if(a==='rengrp'){
+  const n=(prompt('Nombre del grupo:',FD&&FD.name||'')||'').trim();if(!n)return;
+  try{await famTx(d=>({name:n}))}catch(x){toast('No se pudo renombrar')}
+ }
  if(a==='iamnew'){
   const n=$('fnew').value.trim();if(!n)return toast('Escribe tu nombre');
   if(famPend.members.some(m=>m.name.toLowerCase()===n.toLowerCase()))return toast('Ya hay alguien con ese nombre: elígelo arriba');
   const m={id:uid(),name:n},id=famPend.id;
-  try{await FS.updateDoc(FS.doc(db,'grupos',id),{members:FS.arrayUnion(m)});S.fam={id,me:m.id};famPend=null;save();famOpen()}
+  try{await FS.updateDoc(FS.doc(db,'grupos',id),{members:FS.arrayUnion(m)});famJoin(id,m.id,famPend.name);famPend=null;famOpen()}
   catch(x){toast('No se pudo unir al grupo')}
  }
  if(a==='add')famOpenSheet();
@@ -1532,8 +1620,9 @@ $('famc').addEventListener('click',async e=>{
  }
  if(a==='copy'){if(navigator.clipboard)navigator.clipboard.writeText(famText());toast('Liquidación copiada')}
  if(a==='copycode'){if(navigator.clipboard)navigator.clipboard.writeText(S.fam.id);toast('Código copiado')}
- if(a==='leave'&&confirm('¿Salir del grupo? Los gastos siguen guardados para el resto.')){delete S.fam;save();famOpen()}
-});
+ if(a==='leave'&&confirm('¿Salir del grupo? Los gastos siguen guardados para el resto.'))famLeave();
+};
+$('famc').addEventListener('click',famClick);$('famb').addEventListener('click',famClick);
 // ----- Tema -----
 const TM=[['sys','🖥️ Sistema'],['time','🕗 Por horas'],['light','☀️ Claro'],['dark','🌙 Oscuro']];
 const AC=[['verde','Verde'],['azul','Azul'],['violeta','Violeta'],['naranja','Naranja'],['rosa','Rosa']];
@@ -1559,7 +1648,35 @@ setInterval(applyTheme,60000);drawTheme();
 let CL=null,cbusy=false;
 const ftime=t=>t?new Date(t).toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
 const devName=()=>{const u=navigator.userAgent;return /iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':/Android/.test(u)?'Android':/Mac/.test(u)?'Mac':/Windows/.test(u)?'Windows':'otro dispositivo'};
-const cinfo=d=>({v:d._v||1,t:d._t||0,dev:d._dev||'',n:(d.movs||[]).length,nf:(d.folders||[]).filter(f=>f.id!=='general').length});
+const cinfo=d=>({v:d._v||1,t:d._t||0,dev:d._dev||'',n:d._n!=null?d._n:(d.movs||[]).length,nf:(d.folders||[]).filter(f=>f.id!=='general').length});
+// ----- la nube guarda los movimientos partidos por meses: cada mes es un documento aparte, así no hay límite de 1 MB -----
+// documento principal gastos/{uid}: cuentas, categorías, etc. + «_p» (resumen de cada mes); movimientos en gastos/{uid}_AAAA-MM
+const canon=v=>Array.isArray(v)?'['+v.map(canon).join(',')+']':(v&&typeof v==='object')?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}':JSON.stringify(v);
+const h53=s=>{let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677)}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return (4294967296*(2097151&h2)+(h1>>>0)).toString(36)};
+const ymOk=x=>/^\d{4}-\d{2}/.test(x.date||'')?x.date.slice(0,7):'0000-00';
+const partRef=k=>M.FS.doc(db,'gastos',auth.currentUser.uid+'_'+k);
+const cloudMeta=d=>{const o={};Object.keys(d).forEach(k=>{if(k[0]!=='_'&&k!=='movs')o[k]=d[k]});return o};
+function cloudSplit(){
+ const meta=pure(),movs=meta.movs||[];delete meta.movs;
+ const parts={},info={};
+ movs.forEach(x=>{const k=ymOk(x);(parts[k]=parts[k]||[]).push(x)});
+ Object.keys(parts).forEach(k=>{parts[k].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);info[k]={n:parts[k].length,h:h53(canon(parts[k]))}});
+ return{meta,parts,info};
+}
+// lee el documento principal y todos los meses; si otro dispositivo guardaba justo a la vez, vuelve a intentarlo
+async function cloudFetch(){
+ for(let t=0;t<3;t++){
+  const sn=await M.FS.getDocFromServer(ref);
+  if(!sn.exists())return null;
+  const d=sn.data();
+  if(!d._p)return{d,movs:d.movs||[]}; // formato antiguo: todo en un solo documento
+  const ks=Object.keys(d._p),ps=await Promise.all(ks.map(k=>M.FS.getDocFromServer(partRef(k))));
+  const out=[];let ok=true;
+  ps.forEach((s,i)=>{const arr=s.exists()?(s.data().movs||[]):null;if(!arr||h53(canon(arr))!==d._p[ks[i]].h)ok=false;else out.push(...arr)});
+  if(ok)return{d,movs:out};
+ }
+ throw new Error('inconsistente');
+}
 // estado: out | none | ok | dirty | newer | conflict | link | err | load
 function cst(){
  if(!auth||!auth.currentUser)return'out';
@@ -1624,16 +1741,22 @@ async function cloudPush(){
  try{
   const dev=devName(),force=!!(CL&&CL.v>SY.base&&SY.base);
   const base=SY.base;
+  const sp=cloudSplit();
   const v=await M.FS.runTransaction(db,async tx=>{
    const sn=await tx.get(ref),cv=sn.exists()?(sn.data()._v||1):0;
    if(!force&&sn.exists()&&cv!==base)throw new Error('conflict');
-   const nv=cv+1;tx.set(ref,{...pure(),_v:nv,_t:Date.now(),_dev:dev});return nv;
+   const od=sn.exists()?(sn.data()._p||{}):{};
+   // solo se escriben los meses que han cambiado; los que ya no existen se borran
+   Object.keys(sp.info).forEach(k=>{if(!od[k]||od[k].h!==sp.info[k].h)tx.set(partRef(k),{_ym:k,movs:sp.parts[k]})});
+   Object.keys(od).forEach(k=>{if(!sp.info[k])tx.delete(partRef(k))});
+   const nv=cv+1;tx.set(ref,{...sp.meta,_v:nv,_t:Date.now(),_dev:dev,_p:sp.info,_n:S.movs.length});return nv;
   });
   SY.base=v;SY.dirty=false;SY.st=Date.now();ysave();
   CL={v,t:Date.now(),dev,n:S.movs.length,nf:0};
   toast('✅ Guardado en la nube');buzz();
  }catch(e){
   if(String(e.message).includes('conflict')){await cloudCheck();toast('La nube cambió mientras tanto. Revisa y elige de nuevo.')}
+  else if(e&&e.code==='permission-denied')toast('Falta publicar las reglas nuevas de Firestore (mira el LEEME)');
   else toast('No se pudo guardar. Revisa la conexión.');
  }
  cbusy=false;cloudBtn();drawCloud();
@@ -1642,12 +1765,12 @@ async function cloudPull(){
  if(!ref||cbusy)return;
  cbusy=true;drawCloud();
  try{
-  const sn=await M.FS.getDocFromServer(ref);
-  if(!sn.exists()){toast('No hay copia en la nube todavía');cbusy=false;drawCloud();return}
-  const d=sn.data(),c=cinfo(d);
+  const F=await cloudFetch();
+  if(!F){toast('No hay copia en la nube todavía');cbusy=false;drawCloud();return}
+  const d=F.d,c=cinfo(d);
   if((SY.dirty||!SY.base)&&!confirm(`Vas a cargar la versión de la nube (${c.n} movimientos, guardada ${ftime(c.t)}${c.dev?' desde '+c.dev:''}). Los datos de este dispositivo (${S.movs.length} movimientos${SY.dirty?', con cambios sin guardar':''}) se REEMPLAZAN. ¿Continuar?`)){cbusy=false;drawCloud();return}
   const oS=S,oY={...SY};
-  S={movs:d.movs||[],folders:d.folders||[],cats:d.cats||oS.cats,grp:d.grp,fam:d.fam,rec:d.rec||[],skip:d.skip||[],budgets:d.budgets||{},sh:d.sh||{}};
+  S={...cloudMeta(d),movs:F.movs,cats:d.cats||oS.cats};
   ensureG();store();
   SY.base=c.v;SY.dirty=false;SY.st=Date.now();ysave();CL=c;
   watchGrp();refresh();buzz();
