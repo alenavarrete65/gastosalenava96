@@ -1446,7 +1446,14 @@ function famJoin(id,me,name){
 function famLeave(){
  S.fams=S.fams.filter(g=>g.id!==S.fam.id);S.fam=S.fams[0];famAdding=false;famPend=null;save();famOpen();
 }
-const famBar=()=>S.fams.length?`<div class='chips' style='margin:0 0 12px'>${S.fams.map(g=>`<button class='chip${S.fam&&g.id===S.fam.id&&!famAdding?' on':''}' data-fa='pick' data-id='${g.id}'>${esc(g.name||'Grupo')}</button>`).join('')}<button class='chip${famAdding?' on':''}' data-fa='newgrp'>＋ Otro grupo</button></div>`:'';
+const famBar=()=>{
+ if(!S.fams.length)return '';
+ const i=S.fam&&!famAdding?S.fams.findIndex(g=>g.id===S.fam.id):-1;
+ // con 2 o más grupos: flechas para mover el seleccionado y cambiar el orden de las pastillas
+ // fila del grupo seleccionado: cambiar su nombre y, con 2 o más grupos, moverlo
+ const mv=i>=0?`<div class='row' style='margin:-4px 0 12px;align-items:center;gap:8px'><small class='mu' style='flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>«${esc(S.fams[i].name||'Grupo')}»</small><button data-fa='rengrp' style='padding:6px 12px'>✏️ Nombre</button>${S.fams.length>1?`<button data-fa='mvl' aria-label='Mover a la izquierda' style='padding:6px 14px'${i===0?' disabled':''}>◀</button><button data-fa='mvr' aria-label='Mover a la derecha' style='padding:6px 14px'${i===S.fams.length-1?' disabled':''}>▶</button>`:''}</div>`:'';
+ return `<div class='chips' style='margin:0 0 12px'>${S.fams.map(g=>`<button class='chip${S.fam&&g.id===S.fam.id&&!famAdding?' on':''}' data-fa='pick' data-id='${g.id}'>${esc(g.name||'Grupo')}</button>`).join('')}<button class='chip${famAdding?' on':''}' data-fa='newgrp'>＋ Otro grupo</button></div>`+mv;
+};
 async function famTx(fn){
  await M.FS.runTransaction(db,async tx=>{const sn=await tx.get(famRef);if(!sn.exists())throw new Error('nogroup');tx.update(famRef,fn(sn.data()))});
 }
@@ -1627,6 +1634,11 @@ const famClick=async e=>{
  if(a==='iam'){famJoin(famPend?famPend.id:S.fam.id,t.dataset.id,famPend?famPend.name:'');famPend=null;famOpen()}
  if(a==='pick'){S.fam=S.fams.find(g=>g.id===t.dataset.id)||S.fam;famAdding=false;famPend=null;store();famOpen()}
  if(a==='newgrp'){famAdding=true;famPend=null;famDraw()}
+ if(a==='mvl'||a==='mvr'){
+  const i=S.fams.findIndex(g=>g.id===S.fam.id),j=i+(a==='mvl'?-1:1);
+  if(i<0||j<0||j>=S.fams.length)return;
+  [S.fams[i],S.fams[j]]=[S.fams[j],S.fams[i]];save();buzz();famDraw();
+ }
  if(a==='rengrp'){
   const n=(prompt('Nombre del grupo:',FD&&FD.name||'')||'').trim();if(!n)return;
   try{await famTx(d=>({name:n}))}catch(x){toast('No se pudo renombrar')}
