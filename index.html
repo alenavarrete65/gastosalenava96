@@ -117,12 +117,12 @@ label{display:block;font-size:13px;color:var(--mu);margin-top:12px;font-weight:6
 .seg button.on{color:#fff;border:0}
 #sg.on{background:#d8453b}#si.on{background:#1c8556}#str.on{background:#3b7dd8}
 .empty{color:var(--mu);text-align:center;padding:22px}
-#sheet,#ssh,#csh,#ash,#acm,#famsh{position:fixed;left:0;right:0;top:var(--vt,0px);height:var(--vh,100%);background:#0008;backdrop-filter:blur(5px);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
+#sheet,#ssh,#csh,#ash,#acm,#famsh,#famrm{position:fixed;left:0;right:0;top:var(--vt,0px);height:var(--vh,100%);background:#0008;backdrop-filter:blur(5px);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
 #csh{z-index:24}#ash{z-index:22}
 #acm{z-index:26}
-#sheet>.card,#ssh>.card,#csh>.card,#ash>.card,#acm>.card,#famsh>.card{overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
+#sheet>.card,#ssh>.card,#csh>.card,#ash>.card,#acm>.card,#famsh>.card,#famrm>.card{overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
 input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:46px;text-align:center}
-body:has(#sheet:not([hidden]),#ssh:not([hidden]),#csh:not([hidden]),#ash:not([hidden]),#acm:not([hidden]),#famsh:not([hidden]),#cls:not([hidden])){overflow:hidden}
+body:has(#sheet:not([hidden]),#ssh:not([hidden]),#csh:not([hidden]),#ash:not([hidden]),#acm:not([hidden]),#famsh:not([hidden]),#famrm:not([hidden]),#cls:not([hidden])){overflow:hidden}
 #a{font:700 28px "Bricolage Grotesque",system-ui}
 .apv{font:800 40px/1.1 "Bricolage Grotesque",system-ui;letter-spacing:-.03em;text-align:center;margin:12px 0 2px}
 .apv.in{color:var(--in)}.apv.out{color:var(--out)}.apv.trc{color:#3b7dd8}
@@ -304,6 +304,13 @@ html,body,button,input,select,label,.mov,.chip{touch-action:manipulation}
 <label id="famPl"></label><div id="famPt"></div>
 <div class="mu" id="famNt" style="margin-top:8px"></div>
 <div class="row" style="margin-top:16px"><button id="famCancel">Cancelar</button><button id="famDel" class="dng" hidden>Borrar</button><button class="pri" id="famSave">Guardar</button></div>
+</div></div>
+<div id="famrm" hidden><div class="card">
+<b id="famrmT" style="font-size:18px"></b>
+<div class="mu" id="famrmM" style="margin:8px 0 14px"></div>
+<button class="pri" id="famrmSettle" style="width:100%">✓ Liquidar deuda y quitar</button>
+<button id="famrmKeep" style="width:100%;margin-top:8px">Quitar sin liquidar</button>
+<button id="famrmCancel" style="width:100%;margin-top:8px">Cancelar</button>
 </div></div>
 <div id="acm" hidden><div class="card"><b id="acmt" style="font-size:18px"></b><div class="mu" id="acmm" style="margin-top:6px"></div><label id="acml"></label><select id="acms"></select><div class="row" style="margin-top:16px"><button id="acmx">Cancelar</button><button class="pri" id="acmok">Confirmar</button></div></div></div>
 <button id="svb" hidden></button>
@@ -1376,6 +1383,14 @@ $('sh').onclick=async e=>{
 let famAdding=false,FD=null,famRef=null,famUn=null,famPend=null,shTab='pareja',famEdit=null,famPayer='',famMode='eq',famSel=new Set(),famCu={};
 const famMem=()=>(FD&&FD.members)||[];
 const famName=id=>{const m=famMem().find(x=>x.id===id);return m?m.name:'(eliminado)'};
+// miembro retirado = {off:true}: no sale al crear gastos nuevos, pero su historial y su saldo se conservan hasta que se liquide
+const famAct=()=>famMem().filter(m=>!m.off);
+const famUsed=(id,d)=>((d&&d.exps)||[]).some(e=>e.payer===id||(e.sh&&id in e.sh))||((d&&d.pays)||[]).some(p=>p.from===id||p.to===id);
+// en la hoja de gasto: miembros activos + los retirados que ya participaban en el gasto que se está editando
+function famSM(){
+ const x=famEdit?(FD.exps||[]).find(e=>e.id===famEdit):null;
+ return famMem().filter(m=>!m.off||(x&&(x.payer===m.id||(x.sh&&m.id in x.sh))));
+}
 const famSame=(a,b)=>{const ka=Object.keys(a),kb=Object.keys(b||{});return ka.length===kb.length&&ka.every(k=>b&&Math.abs(a[k]-b[k])<.005)};
 // saldo de cada miembro: lo que ha pagado - lo que le corresponde + pagos de liquidación ya hechos
 function famCalc(){
@@ -1459,30 +1474,34 @@ function famDraw(){
  if(!u){o.innerHTML="<div class='card'><b>Inicia sesión</b><p class='mu'>Cada miembro entra con su cuenta de Google y os unís al grupo con un código.</p><button class='pri' data-fa='login'>Iniciar sesión con Google</button></div>";return}
  if(!S.fam||famAdding){
   o.innerHTML=famPend
-   ?`<div class='card'><b>¿Quién eres en «${esc(famPend.name)}»?</b><div class='chips'>${famPend.members.map(m=>`<button class='chip' data-fa='iam' data-id='${m.id}'>${esc(m.name)}</button>`).join('')}</div><label>¿No estás en la lista? Escribe tu nombre</label><input id='fnew' placeholder='Tu nombre'><div class='row' style='margin-top:12px'><button data-fa='cancelJoin'>Cancelar</button><button class='pri' data-fa='iamnew'>Unirme como nuevo</button></div></div>`
+   ?`<div class='card'><b>¿Quién eres en «${esc(famPend.name)}»?</b><div class='chips'>${famPend.members.filter(m=>!m.off).map(m=>`<button class='chip' data-fa='iam' data-id='${m.id}'>${esc(m.name)}</button>`).join('')}</div><label>¿No estás en la lista? Escribe tu nombre</label><input id='fnew' placeholder='Tu nombre'><div class='row' style='margin-top:12px'><button data-fa='cancelJoin'>Cancelar</button><button class='pri' data-fa='iamnew'>Unirme como nuevo</button></div></div>`
    :`<div class='card'><b>Crear grupo de gastos</b><div class='mu'>Para familia, viajes, piso compartido… Sin cuenta conjunta: solo apuntáis los gastos y al final se liquida.</div><label>Nombre del grupo</label><input id='fgn' value='Familia' placeholder='Ej. Familia, Viaje a Roma…'><label>Tu nombre</label><input id='fn1' placeholder='Ej. Alejandro'><label>Otros miembros (opcional, separados por comas)</label><input id='fnm' placeholder='Ej. Mamá, Papá, Lucía'><div class='mu' style='margin-top:6px'>Puedes añadir o quitar miembros cuando quieras, sin límite.</div><p><button class='pri' data-fa='create'>Crear grupo</button></p></div><div class='card'><b>¿Ya te han dado un código?</b><label>Código</label><input id='fcode' placeholder='XXXXX-XXXXX' autocapitalize='characters'><p><button data-fa='join'>Unirme</button></p></div>`;
   return;
  }
  if(!FD){o.innerHTML="<div class='card'>Cargando grupo…<p><button data-fa='leave'>Salir del grupo</button></p></div>";return}
- const mem=famMem(),me=S.fam.me;
- if(!mem.some(m=>m.id===me)){
-  o.innerHTML=`<div class='card'><b>¿Quién eres en «${esc(FD.name||'Familia')}»?</b><div class='chips'>${mem.map(m=>`<button class='chip' data-fa='iam' data-id='${m.id}'>${esc(m.name)}</button>`).join('')}</div><p><button data-fa='leave'>Salir del grupo</button></p></div>`;
+ const mem=famMem(),me=S.fam.me,meM=mem.find(m=>m.id===me),act=mem.filter(m=>!m.off);
+ if(!meM){
+  o.innerHTML=`<div class='card'><b>¿Quién eres en «${esc(FD.name||'Familia')}»?</b><div class='chips'>${act.map(m=>`<button class='chip' data-fa='iam' data-id='${m.id}'>${esc(m.name)}</button>`).join('')}</div><p><button data-fa='leave'>Salir del grupo</button></p></div>`;
+  return;
+ }
+ if(meM.off){
+  o.innerHTML=`<div class='card'><b>Te han quitado de «${esc(FD.name||'Familia')}»</b><div class='mu'>Tu historial se conserva. Si ha sido un error, puedes volver al grupo.</div><div class='row' style='margin-top:12px'><button data-fa='leave'>Salir del grupo</button><button class='pri' data-fa='rsm' data-e='${me}'>Volver al grupo</button></div></div>`;
   return;
  }
  const c=famCalc(),net=c.n[me]||0,plan=famPlan(c.n),nm=id=>id===me?'Tú':esc(famName(id));
  const hi=net===0?(c.tot?'Estás en paz ✓':'Aún no hay gastos'):net>0?'Te deben en total':'Debes en total';
  const items=[...(FD.exps||[]).map(x=>({...x,k:'e'})),...(FD.pays||[]).map(x=>({...x,k:'p'}))].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
- const used=id=>(FD.exps||[]).some(e=>e.payer===id||(e.sh&&id in e.sh))||(FD.pays||[]).some(p=>p.from===id||p.to===id);
  const planH=plan.length?plan.map(p=>`<div class='mov'><div class='l'><i class='ic' style='background:#3b7dd826;color:#3b7dd8'>⇄</i><div><b>${nm(p.from)} → ${nm(p.to)}</b><small>${p.from===me?'Tú pagas':p.to===me?'Tú recibes':'Entre otros miembros'}</small></div></div><div><b>${eur(p.amount)}</b><button data-fa='paid' data-from='${p.from}' data-to='${p.to}' data-amt='${p.amount}' style='margin-left:8px;padding:6px 10px;font-size:13px'>✓ Pagado</button></div></div>`).join(''):`<div class='empty'>${c.tot?'Todo saldado ✓':'Aún no hay gastos'}</div>`;
- const balH=mem.map((m,i)=>{const v=c.n[m.id],cl=v>0?'in':v<0?'out':'mu',ini=esc(([...m.name][0]||'?').toUpperCase());
-  return `<div class='cr'><i class='ic' style='background:${PAL[i%7]}26;color:${PAL[i%7]}'>${ini}</i><div style='flex:1;min-width:0'><div class='cn'><span>${esc(m.name)}${m.id===me?' (tú)':''}</span><b class='${cl}'>${v>0?'+':v<0?'−':''}${eur(Math.abs(v))}</b></div><div class='mu'>Pagó ${eur(c.paid[m.id])} · Le corresponde ${eur(c.share[m.id])}</div></div></div>`}).join('');
+ const balH=mem.filter(m=>!m.off||Math.abs(c.n[m.id])>=.005).map((m,i)=>{const v=c.n[m.id],cl=v>0?'in':v<0?'out':'mu',ini=esc(([...m.name][0]||'?').toUpperCase());
+  return `<div class='cr'><i class='ic' style='background:${PAL[i%7]}26;color:${PAL[i%7]}'>${ini}</i><div style='flex:1;min-width:0'><div class='cn'><span>${esc(m.name)}${m.id===me?' (tú)':''}${m.off?" <span class='mu'>(ya no está)</span>":''}</span><b class='${cl}'>${v>0?'+':v<0?'−':''}${eur(Math.abs(v))}</b></div><div class='mu'>Pagó ${eur(c.paid[m.id])} · Le corresponde ${eur(c.share[m.id])}</div></div></div>`}).join('');
  const rowH=items.map(x=>x.k==='e'
   ?`<div class='mov' data-fa='edit' data-e='${x.id}' role='button' tabindex='0'><div class='l'><i class='ic gasto'>🧾</i><div><b>${esc(x.desc||'Gasto')}</b><small>${fdate(x.date)}<span class='ch'>Pagó ${esc(famName(x.payer))}</span></small></div></div><div><b>${eur(x.amount)}</b><small style='justify-content:flex-end'>${(x.sh&&x.sh[me])?'tu parte '+eur(x.sh[me]):'no participas'}</small></div></div>`
   :`<div class='mov'><div class='l'><i class='ic ingreso'>💸</i><div><b>${esc(famName(x.from))} pagó a ${esc(famName(x.to))}</b><small>${fdate(x.date)}</small></div></div><div><b class='in'>${eur(x.amount)}</b></div><button class='x' data-fa='delpay' data-e='${x.id}' aria-label='Borrar pago'>✕</button></div>`).join('');
- const memH=mem.map(m=>`<div class='cr'><div style='flex:1;min-width:0'><b>${esc(m.name)}</b>${m.id===me?" <span class='mu'>(tú)</span>":''}</div><button class='x' data-fa='renm' data-e='${m.id}' aria-label='Renombrar'>✏️</button>${(!used(m.id)&&m.id!==me)?`<button class='x' data-fa='rmm' data-e='${m.id}' aria-label='Quitar miembro'>✕</button>`:''}</div>`).join('');
+ const memH=act.map(m=>`<div class='cr'><div style='flex:1;min-width:0'><b>${esc(m.name)}</b>${m.id===me?" <span class='mu'>(tú)</span>":''}</div><button class='x' data-fa='renm' data-e='${m.id}' aria-label='Renombrar'>✏️</button>${(m.id!==me)?`<button class='x' data-fa='rmm' data-e='${m.id}' aria-label='Quitar miembro'>✕</button>`:''}</div>`).join('');
+ const gone=mem.filter(m=>m.off),goneH=gone.length?`<div class='mu' style='margin-top:14px'>Ya no participan (su historial se conserva)</div>`+gone.map(m=>`<div class='cr'><div style='flex:1;min-width:0'><b class='mu'>${esc(m.name)}</b></div><button data-fa='rsm' data-e='${m.id}' style='padding:6px 10px;font-size:13px'>↩︎ Volver a añadir</button></div>`).join(''):'';
  const id=S.fam.id;
  o.innerHTML=`<div class='card' style='background:var(--tx);color:var(--bg);border:0'>
- <div style='opacity:.75'>${esc(FD.name||'Familia')} · ${mem.length} ${mem.length===1?'miembro':'miembros'}</div>
+ <div style='opacity:.75'>${esc(FD.name||'Familia')} · ${act.length} ${act.length===1?'miembro':'miembros'}</div>
  <div style='opacity:.9;margin-top:4px'>${hi}</div>
  ${net?`<b style='display:block;font:700 44px/1.15 "Bricolage Grotesque",system-ui;letter-spacing:-.03em;font-variant-numeric:tabular-nums'>${mh(Math.abs(net))}</b>`:''}
  <div style='opacity:.7;font-size:13px;margin-top:12px'>Gasto total ${eur(c.tot)} · Has pagado ${eur(c.paid[me])} · Tu parte ${eur(c.share[me])}</div></div>
@@ -1490,7 +1509,7 @@ function famDraw(){
  <div class='card'><b>Liquidación</b><div class='mu'>Con estos pagos todos quedáis a cero, con el mínimo de transferencias. Pulsa «Pagado» cuando se haga cada uno.</div><div style='margin-top:8px'>${planH}</div>${plan.length?`<p style='margin:10px 0 0'><button data-fa='copy'>📋 Copiar liquidación</button></p>`:''}</div>
  <div class='card'><b>Saldo de cada uno</b><div style='margin-top:6px'>${balH}</div></div>
  <div class='card'><b>Gastos y pagos</b><div class='mu'>Toca un gasto para editarlo o borrarlo.</div><div style='margin-top:6px'>${rowH||"<div class='empty'>Aún no hay gastos</div>"}</div></div>
- <div class='card'><b>Miembros</b><div class='mu'>Añade a quien quieras. Solo se puede quitar a quien aún no tiene gastos ni pagos.</div><div style='margin-top:6px'>${memH}</div><div class='row' style='margin-top:10px'><input id='famAdd' placeholder='Nombre del nuevo miembro'><button class='pri' data-fa='addm' style='flex:none'>Añadir</button></div></div>
+ <div class='card'><b>Miembros</b><div class='mu'>Añade a quien quieras y quita con ✕ a quien ya no participe. Si ya tenía gastos, su historial y su saldo se conservan hasta que se liquide.</div><div style='margin-top:6px'>${memH}${goneH}</div><div class='row' style='margin-top:10px'><input id='famAdd' placeholder='Nombre del nuevo miembro'><button class='pri' data-fa='addm' style='flex:none'>Añadir</button></div></div>
  <div class='card'><b>Grupo</b><div class='mu'>Código para que se una el resto</div><div style='font:700 24px "Bricolage Grotesque",system-ui;letter-spacing:.08em;margin:6px 0 12px'>${id.slice(0,5)}-${id.slice(5)}</div><div class='row'><button data-fa='copycode'>Copiar código</button><button data-fa='rengrp'>✏️ Renombrar</button></div><div class='row' style='margin-top:8px'><button data-fa='leave'>Salir del grupo</button></div></div>`;
 }
 // ----- hoja de gasto de grupo -----
@@ -1500,7 +1519,7 @@ function updFamNote(){
  else{const s=r2(Object.values(famCu).reduce((t,v)=>t+(parseFloat(v)||0),0)),d=r2(a-s);$('famNt').textContent=d===0&&a>0?'✓ Los importes cuadran con el total':d>0?`Faltan ${eur(d)} por asignar`:`Te pasas ${eur(-d)}`}
 }
 function famDrawSheet(){
- const mem=famMem(),me=S.fam.me;
+ const mem=famSM(),me=S.fam.me;
  $('famPay').innerHTML=mem.map(m=>`<button type="button" class="chip${famPayer===m.id?' on':''}" data-fk="pay" data-fv="${m.id}">${esc(m.name)}${m.id===me?' (yo)':''}</button>`).join('');
  $('famMd').innerHTML=[['eq','Por igual'],['cu','Por importes']].map(([k,n])=>`<button type="button" class="chip${famMode===k?' on':''}" data-fk="mode" data-fv="${k}">${n}</button>`).join('');
  const pt=$('famPt');
@@ -1521,7 +1540,7 @@ function famOpenSheet(id){
  $('famT').textContent=x?'Editar gasto':'Nuevo gasto';
  $('famA').value=x?x.amount:'';$('famC').value=x?(x.desc||''):'';$('famD').value=x?x.date:today();
  famPayer=x&&mem.some(m=>m.id===x.payer)?x.payer:S.fam.me;
- famMode='eq';famSel=new Set(mem.map(m=>m.id));famCu={};
+ famMode='eq';famSel=new Set(famAct().map(m=>m.id));famCu={};
  if(x){
   const ids=Object.keys(x.sh||{});famSel=new Set(ids);
   const t=famShares(x.amount);
@@ -1557,9 +1576,35 @@ $('famsh').addEventListener('click',e=>{
   famMode=v;
  }
  if(k==='sel'){if(famSel.has(v))famSel.delete(v);else famSel.add(v)}
- if(k==='all')famSel=new Set(famMem().map(m=>m.id));
+ if(k==='all')famSel=new Set(famSM().map(m=>m.id));
  famDrawSheet();
 });
+// ----- quitar a un miembro con saldo pendiente: preguntar y ofrecer liquidar su deuda -----
+let famRmId=null;
+// pagos que dejan a 0 el saldo de un miembro (los de la liquidación mínima en los que participa)
+const famSettleOf=id=>famPlan(famCalc().n).filter(p=>p.from===id||p.to===id).map(p=>({id:uid(),from:p.from,to:p.to,amount:p.amount,date:today()}));
+async function famDoRemove(id,settled){
+ const m=famMem().find(x=>x.id===id);if(!m)return;
+ // se decide dentro de la transacción: sin historial se borra del todo; con historial se retira (off) para no descuadrar saldos
+ try{await famTx(d=>({members:(d.members||[]).flatMap(x=>x.id!==id?[x]:famUsed(id,d)?[{...x,off:true}]:[])}));buzz();toast(settled?m.name+': deuda liquidada y fuera del grupo':m.name+' ya no está en el grupo')}
+ catch(x){toast('No se pudo quitar. Revisa la conexión.')}
+}
+function famAskRemove(id){
+ const m=famMem().find(x=>x.id===id),bal=famCalc().n[id]||0;if(!m)return;
+ famRmId=id;
+ $('famrmT').textContent='Quitar a '+m.name;
+ $('famrmM').textContent=m.name+(bal<0?' debe '+eur(-bal)+'.':' tiene '+eur(bal)+' a su favor.')+' Puedes liquidar su saldo ahora (se registran los pagos necesarios) o quitarlo dejando ese saldo pendiente en la liquidación.';
+ $('famrm').hidden=false;
+}
+$('famrmCancel').onclick=()=>$('famrm').hidden=true;
+$('famrm').addEventListener('click',e=>{if(e.target.id==='famrm')$('famrm').hidden=true});
+$('famrmKeep').onclick=async()=>{const id=famRmId;$('famrm').hidden=true;if(id)await famDoRemove(id)};
+$('famrmSettle').onclick=async()=>{
+ const id=famRmId;$('famrm').hidden=true;if(!id)return;
+ const ps=famSettleOf(id);
+ try{if(ps.length)await M.FS.updateDoc(famRef,{pays:M.FS.arrayUnion(...ps)})}catch(e){return toast('No se pudo liquidar. Revisa la conexión.')}
+ await famDoRemove(id,true);
+};
 // ----- acciones del grupo -----
 const famClick=async e=>{
  const t=e.target.closest('[data-fa]');if(!t)return;const a=t.dataset.fa,FS=M.FS;
@@ -1588,7 +1633,7 @@ const famClick=async e=>{
  }
  if(a==='iamnew'){
   const n=$('fnew').value.trim();if(!n)return toast('Escribe tu nombre');
-  if(famPend.members.some(m=>m.name.toLowerCase()===n.toLowerCase()))return toast('Ya hay alguien con ese nombre: elígelo arriba');
+  if(famPend.members.some(m=>!m.off&&m.name.toLowerCase()===n.toLowerCase()))return toast('Ya hay alguien con ese nombre: elígelo arriba');
   const m={id:uid(),name:n},id=famPend.id;
   try{await FS.updateDoc(FS.doc(db,'grupos',id),{members:FS.arrayUnion(m)});famJoin(id,m.id,famPend.name);famPend=null;famOpen()}
   catch(x){toast('No se pudo unir al grupo')}
@@ -1605,12 +1650,25 @@ const famClick=async e=>{
  }
  if(a==='addm'){
   const n=$('famAdd').value.trim();if(!n)return;
-  if(famMem().some(m=>m.name.toLowerCase()===n.toLowerCase()))return toast('Ya hay un miembro con ese nombre');
+  const ex=famMem().find(m=>m.name.toLowerCase()===n.toLowerCase());
+  if(ex&&!ex.off)return toast('Ya hay un miembro con ese nombre');
+  if(ex){ // si coincide con alguien retirado, vuelve al grupo con su historial
+   try{await famTx(d=>({members:(d.members||[]).map(x=>{if(x.id!==ex.id)return x;const{off,...r}=x;return r})}));buzz();toast(ex.name+' vuelve al grupo')}catch(e){toast('No se pudo añadir')}
+   return;
+  }
   FS.updateDoc(famRef,{members:FS.arrayUnion({id:uid(),name:n})}).then(buzz).catch(()=>toast('No se pudo añadir'));
  }
  if(a==='rmm'){
-  const m=famMem().find(x=>x.id===t.dataset.e);if(!m||!confirm('¿Quitar a '+m.name+' del grupo?'))return;
-  FS.updateDoc(famRef,{members:FS.arrayRemove(m)}).catch(()=>toast('No se pudo quitar'));
+  const id=t.dataset.e,m=famMem().find(x=>x.id===id);if(!m||id===S.fam.me)return;
+  const used=famUsed(id,FD),bal=famCalc().n[id]||0;
+  if(used&&Math.abs(bal)>=.005){famAskRemove(id);return} // con saldo pendiente: pregunta y ofrece liquidar
+  if(!confirm(!used?'¿Quitar a '+m.name+' del grupo?':'¿Quitar a '+m.name+'? Sus gastos y pagos anteriores se conservan, pero ya no aparecerá al crear gastos nuevos.'))return;
+  await famDoRemove(id);
+ }
+ if(a==='rsm'){
+  const id=t.dataset.e;
+  try{await famTx(d=>({members:(d.members||[]).map(x=>{if(x.id!==id)return x;const{off,...r}=x;return r})}));buzz()}
+  catch(x){toast('No se pudo volver a añadir')}
  }
  if(a==='renm'){
   const id=t.dataset.e,m=famMem().find(x=>x.id===id);if(!m)return;
@@ -1813,14 +1871,14 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ref)cloud
 (function(){const vv=window.visualViewport;if(!vv)return;
  const fit=()=>{const r=document.documentElement.style;r.setProperty('--vh',vv.height+'px');r.setProperty('--vt',vv.offsetTop+'px')};
  vv.addEventListener('resize',fit);vv.addEventListener('scroll',fit);fit();
- document.addEventListener('focusin',e=>{const t=e.target;if(!t.closest||!t.closest('#sheet,#ssh,#csh,#ash,#acm,#famsh'))return;
+ document.addEventListener('focusin',e=>{const t=e.target;if(!t.closest||!t.closest('#sheet,#ssh,#csh,#ash,#acm,#famsh,#famrm'))return;
   setTimeout(()=>{fit();try{t.scrollIntoView({block:'center',behavior:'smooth'})}catch(x){}},320)});
  document.addEventListener('focusout',()=>setTimeout(()=>{fit();if(!document.activeElement||document.activeElement===document.body)window.scrollTo(0,0)},120));
 })();
 if('serviceWorker' in navigator){
  let swr=null,ver=null,busy=false;
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>swr=r).catch(()=>{});
- const reload=()=>{if(['sheet','ssh','csh','ash','acm','famsh','cls'].every(i=>$(i).hidden))location.reload();else setTimeout(reload,4000)};
+ const reload=()=>{if(['sheet','ssh','csh','ash','acm','famsh','famrm','cls'].every(i=>$(i).hidden))location.reload();else setTimeout(reload,4000)};
  const chk=async()=>{try{
   const t=await(await fetch('index.html',{cache:'no-store'})).text();let h=0;
   for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;

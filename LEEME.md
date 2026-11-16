@@ -44,7 +44,8 @@ Ahora la nube guarda los movimientos **partidos por meses** (un documento por me
 El botón de arriba «👥 Grupos» abre dos pestañas:
 - **Pareja**: igual que antes.
 - **Familia** (estilo Tricount): creas un grupo con los miembros que quieras (sin límite, y puedes añadir o quitar después), apuntáis gastos indicando quién pagó y cómo se reparte (por igual entre los que elijas, o por importes), y la app calcula el saldo de cada uno y la liquidación con el mínimo de pagos. Pulsa «✓ Pagado» al hacer cada pago; también puedes copiar la liquidación para mandarla. No hay cuenta conjunta ni toca tus cuentas.
-Para que se una el resto, comparte el código del grupo: cada uno entra con su cuenta de Google y elige quién es. Puedes tener **varios grupos a la vez** (por ejemplo «Familia» y «Viaje a Roma»): se cambia de uno a otro con las pastillas de arriba, y puedes **renombrar** el grupo. Usa la colección `grupos` que ya existe.
+Para que se una el resto, comparte el código del grupo: cada uno entra con su cuenta de Google y elige quién es. **Quitar miembros**: pulsa la ✕ junto a su nombre. Si no tiene gastos se borra del todo; si ya tenía historial se conserva (no sale al crear gastos nuevos) y puedes volver a añadirlo con «↩︎ Volver a añadir». Si tiene saldo pendiente, la app pregunta y ofrece **«Liquidar deuda y quitar»** (registra los pagos necesarios para dejarlo a cero) o «Quitar sin liquidar» (su saldo sigue apareciendo en la liquidación hasta que se salde).
+Puedes tener **varios grupos a la vez** (por ejemplo «Familia» y «Viaje a Roma»): se cambia de uno a otro con las pastillas de arriba, y puedes **renombrar** el grupo. Usa la colección `grupos` que ya existe.
 
 ## Novedades de esta versión
 - **Calculadora en el importe**: puedes escribir «12+3,50» o «45/3» y usar los botones ＋ − × ÷ =. Se calcula al guardar y se ve en vivo arriba.
