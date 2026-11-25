@@ -117,12 +117,12 @@ label{display:block;font-size:13px;color:var(--mu);margin-top:12px;font-weight:6
 .seg button.on{color:#fff;border:0}
 #sg.on{background:#d8453b}#si.on{background:#1c8556}#str.on{background:#3b7dd8}
 .empty{color:var(--mu);text-align:center;padding:22px}
-#sheet,#ssh,#csh,#ash,#acm,#famsh,#famrm{position:fixed;left:0;right:0;top:var(--vt,0px);height:var(--vh,100%);background:#0008;backdrop-filter:blur(5px);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
+#sheet,#ssh,#csh,#ash,#acm,#famsh,#famrm,#famfd{position:fixed;left:0;right:0;top:var(--vt,0px);height:var(--vh,100%);background:#0008;backdrop-filter:blur(5px);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s}
 #csh{z-index:24}#ash{z-index:22}
 #acm{z-index:26}
-#sheet>.card,#ssh>.card,#csh>.card,#ash>.card,#acm>.card,#famsh>.card,#famrm>.card{overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
+#sheet>.card,#ssh>.card,#csh>.card,#ash>.card,#acm>.card,#famsh>.card,#famrm>.card,#famfd>.card{overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;width:100%;max-width:640px;margin:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));animation:up .4s cubic-bezier(.2,1.1,.3,1)}
 input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:46px;text-align:center}
-body:has(#sheet:not([hidden]),#ssh:not([hidden]),#csh:not([hidden]),#ash:not([hidden]),#acm:not([hidden]),#famsh:not([hidden]),#famrm:not([hidden]),#cls:not([hidden])){overflow:hidden}
+body:has(#sheet:not([hidden]),#ssh:not([hidden]),#csh:not([hidden]),#ash:not([hidden]),#acm:not([hidden]),#famsh:not([hidden]),#famrm:not([hidden]),#famfd:not([hidden]),#cls:not([hidden])){overflow:hidden}
 #a{font:700 28px "Bricolage Grotesque",system-ui}
 .apv{font:800 40px/1.1 "Bricolage Grotesque",system-ui;letter-spacing:-.03em;text-align:center;margin:12px 0 2px}
 .apv.in{color:var(--in)}.apv.out{color:var(--out)}.apv.trc{color:#3b7dd8}
@@ -303,7 +303,18 @@ html,body,button,input,select,label,.mov,.chip{touch-action:manipulation}
 <label>Reparto</label><div class="chips" id="famMd"></div>
 <label id="famPl"></label><div id="famPt"></div>
 <div class="mu" id="famNt" style="margin-top:8px"></div>
+<div id="famFw" style="margin-top:12px"></div>
 <div class="row" style="margin-top:16px"><button id="famCancel">Cancelar</button><button id="famDel" class="dng" hidden>Borrar</button><button class="pri" id="famSave">Guardar</button></div>
+</div></div>
+<div id="famfd" hidden><div class="card">
+<b style="font-size:18px">🏦 Aportar al fondo</b>
+<div class="mu" style="margin:6px 0 4px">Cada persona puede tener su propio fondo para compras futuras (p. ej. la primitiva). Si el dinero lo tiene otro, elígelo abajo; si lo tiene el mismo dueño, elige a la misma persona en las dos filas.</div>
+<label>Importe (€)</label><input id="fdA" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00">
+<label>Concepto (opcional)</label><input id="fdC" placeholder="Ej. Primitiva">
+<label>Fecha</label><input id="fdD" type="date">
+<label>¿De quién es el fondo?</label><div class="chips" id="fdFrom"></div>
+<label>¿Quién tiene el dinero?</label><div class="chips" id="fdTo"></div>
+<div class="row" style="margin-top:16px"><button id="fdCancel">Cancelar</button><button class="pri" id="fdSave">Guardar</button></div>
 </div></div>
 <div id="famrm" hidden><div class="card">
 <b id="famrmT" style="font-size:18px"></b>
@@ -1380,7 +1391,7 @@ $('sh').onclick=async e=>{
 };
 
 // ----- Familia: gastos a repartir entre varios (estilo Tricount) -----
-let famAdding=false,FD=null,famRef=null,famUn=null,famPend=null,shTab='pareja',famEdit=null,famPayer='',famMode='eq',famSel=new Set(),famCu={};
+let famFundOn=false,fdFrom='',fdTo='',famAdding=false,FD=null,famRef=null,famUn=null,famPend=null,shTab='pareja',famEdit=null,famPayer='',famMode='eq',famSel=new Set(),famCu={};
 const famMem=()=>(FD&&FD.members)||[];
 const famName=id=>{const m=famMem().find(x=>x.id===id);return m?m.name:'(eliminado)'};
 // miembro retirado = {off:true}: no sale al crear gastos nuevos, pero su historial y su saldo se conservan hasta que se liquide
@@ -1394,16 +1405,28 @@ function famSM(){
 const famSame=(a,b)=>{const ka=Object.keys(a),kb=Object.keys(b||{});return ka.length===kb.length&&ka.every(k=>b&&Math.abs(a[k]-b[k])<.005)};
 // saldo de cada miembro: lo que ha pagado - lo que le corresponde + pagos de liquidación ya hechos
 function famCalc(){
- const n={},paid={},share={};let tot=0;
+ const n={},paid={},share={},dep={},used={};let tot=0;
  famMem().forEach(m=>{n[m.id]=0;paid[m.id]=0;share[m.id]=0});
  (FD.exps||[]).forEach(e=>{
   tot+=e.amount;
   if(e.payer in n){n[e.payer]+=e.amount;paid[e.payer]+=e.amount}
-  Object.entries(e.sh||{}).forEach(([k,v])=>{if(k in n){n[k]-=v;share[k]+=v}});
+  Object.entries(e.sh||{}).forEach(([k,v])=>{if(k in n){n[k]-=v;share[k]+=v}
+   // gasto pagado con fondo: lo que le tocaba a k sale de su fondo guardado por el que pagó
+   if(e.fund)used[k+'>'+e.payer]=(used[k+'>'+e.payer]||0)+v});
  });
- (FD.pays||[]).forEach(p=>{if(p.from in n)n[p.from]+=p.amount;if(p.to in n)n[p.to]-=p.amount});
+ (FD.pays||[]).forEach(p=>{if(p.from in n)n[p.from]+=p.amount;if(p.to in n)n[p.to]-=p.amount;
+  if(p.fund)dep[p.from+'>'+p.to]=(dep[p.from+'>'+p.to]||0)+p.amount});
  Object.keys(n).forEach(k=>{n[k]=r2(n[k]);paid[k]=r2(paid[k]);share[k]=r2(share[k])});
- return{n,tot:r2(tot),paid,share};
+ // fondo = aportado - gastado con fondo; solo cuenta mientras el dueño siga teniendo saldo a favor (si ya se le devolvió, no queda nada)
+ const funds=[],np={...n},fe={};
+ Object.keys(dep).forEach(key=>{
+  const[o,h]=key.split('>');if(!(o in n)||!(h in n))return;
+  const f=r2(Math.max(0,dep[key]-(used[key]||0)));
+  if(o===h){if(f>.004)funds.push({owner:o,holder:h,amount:f});return}
+  const eff=r2(Math.min(f,Math.max(0,n[o])));
+  if(eff>.004){np[o]=r2(np[o]-eff);np[h]=r2(np[h]+eff);fe[o]=r2((fe[o]||0)+eff);fe[h]=r2((fe[h]||0)-eff);funds.push({owner:o,holder:h,amount:eff})}
+ });
+ return{n,np,fe,tot:r2(tot),paid,share,funds};
 }
 // liquidación con el mínimo de pagos: el que más debe paga al que más se le debe
 function famPlan(n){
@@ -1434,8 +1457,8 @@ function famShares(a){
  return s===Math.round(a*100)&&s>0?o:null;
 }
 function famText(){
- const c=famCalc(),plan=famPlan(c.n);
- return (FD.name||'Familia')+' · liquidación\nTotal gastado: '+eur(c.tot)+'\n\n'+(plan.length?plan.map(p=>'• '+famName(p.from)+' paga '+eur(p.amount)+' a '+famName(p.to)).join('\n'):'Todo saldado ✓');
+ const c=famCalc(),plan=famPlan(c.np);
+ return (FD.name||'Familia')+' · liquidación\nTotal gastado: '+eur(c.tot)+'\n\n'+(plan.length?plan.map(p=>'• '+famName(p.from)+' paga '+eur(p.amount)+' a '+famName(p.to)).join('\n'):'Todo saldado ✓')+(c.funds.length?'\n\nFondos guardados:\n'+c.funds.map(f=>'• Fondo de '+famName(f.owner)+': '+eur(f.amount)+(f.owner===f.holder?'':' (lo guarda '+famName(f.holder)+')')).join('\n'):'');
 }
 // varios grupos: se guardan en S.fams y se elige cuál ver con las pastillas de arriba
 function famJoin(id,me,name){
@@ -1495,25 +1518,28 @@ function famDraw(){
   o.innerHTML=`<div class='card'><b>Te han quitado de «${esc(FD.name||'Familia')}»</b><div class='mu'>Tu historial se conserva. Si ha sido un error, puedes volver al grupo.</div><div class='row' style='margin-top:12px'><button data-fa='leave'>Salir del grupo</button><button class='pri' data-fa='rsm' data-e='${me}'>Volver al grupo</button></div></div>`;
   return;
  }
- const c=famCalc(),net=c.n[me]||0,plan=famPlan(c.n),nm=id=>id===me?'Tú':esc(famName(id));
+ const c=famCalc(),net=c.n[me]||0,plan=famPlan(c.np),nm=id=>id===me?'Tú':esc(famName(id));
  const hi=net===0?(c.tot?'Estás en paz ✓':'Aún no hay gastos'):net>0?'Te deben en total':'Debes en total';
  const items=[...(FD.exps||[]).map(x=>({...x,k:'e'})),...(FD.pays||[]).map(x=>({...x,k:'p'}))].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
  const planH=plan.length?plan.map(p=>`<div class='mov'><div class='l'><i class='ic' style='background:#3b7dd826;color:#3b7dd8'>⇄</i><div><b>${nm(p.from)} → ${nm(p.to)}</b><small>${p.from===me?'Tú pagas':p.to===me?'Tú recibes':'Entre otros miembros'}</small></div></div><div><b>${eur(p.amount)}</b><button data-fa='paid' data-from='${p.from}' data-to='${p.to}' data-amt='${p.amount}' style='margin-left:8px;padding:6px 10px;font-size:13px'>✓ Pagado</button></div></div>`).join(''):`<div class='empty'>${c.tot?'Todo saldado ✓':'Aún no hay gastos'}</div>`;
  const balH=mem.filter(m=>!m.off||Math.abs(c.n[m.id])>=.005).map((m,i)=>{const v=c.n[m.id],cl=v>0?'in':v<0?'out':'mu',ini=esc(([...m.name][0]||'?').toUpperCase());
-  return `<div class='cr'><i class='ic' style='background:${PAL[i%7]}26;color:${PAL[i%7]}'>${ini}</i><div style='flex:1;min-width:0'><div class='cn'><span>${esc(m.name)}${m.id===me?' (tú)':''}${m.off?" <span class='mu'>(ya no está)</span>":''}</span><b class='${cl}'>${v>0?'+':v<0?'−':''}${eur(Math.abs(v))}</b></div><div class='mu'>Pagó ${eur(c.paid[m.id])} · Le corresponde ${eur(c.share[m.id])}</div></div></div>`}).join('');
+  return `<div class='cr'><i class='ic' style='background:${PAL[i%7]}26;color:${PAL[i%7]}'>${ini}</i><div style='flex:1;min-width:0'><div class='cn'><span>${esc(m.name)}${m.id===me?' (tú)':''}${m.off?" <span class='mu'>(ya no está)</span>":''}</span><b class='${cl}'>${v>0?'+':v<0?'−':''}${eur(Math.abs(v))}</b></div><div class='mu'>Pagó ${eur(c.paid[m.id])} · Le corresponde ${eur(c.share[m.id])}${c.fe[m.id]?` · ${c.fe[m.id]>0?'incluye '+eur(c.fe[m.id])+' en su fondo':'incluye '+eur(-c.fe[m.id])+' de fondos que guarda'}`:''}</div></div></div>`}).join('');
  const rowH=items.map(x=>x.k==='e'
-  ?`<div class='mov' data-fa='edit' data-e='${x.id}' role='button' tabindex='0'><div class='l'><i class='ic gasto'>🧾</i><div><b>${esc(x.desc||'Gasto')}</b><small>${fdate(x.date)}<span class='ch'>Pagó ${esc(famName(x.payer))}</span></small></div></div><div><b>${eur(x.amount)}</b><small style='justify-content:flex-end'>${(x.sh&&x.sh[me])?'tu parte '+eur(x.sh[me]):'no participas'}</small></div></div>`
-  :`<div class='mov'><div class='l'><i class='ic ingreso'>💸</i><div><b>${esc(famName(x.from))} pagó a ${esc(famName(x.to))}</b><small>${fdate(x.date)}</small></div></div><div><b class='in'>${eur(x.amount)}</b></div><button class='x' data-fa='delpay' data-e='${x.id}' aria-label='Borrar pago'>✕</button></div>`).join('');
+  ?`<div class='mov' data-fa='edit' data-e='${x.id}' role='button' tabindex='0'><div class='l'><i class='ic gasto'>🧾</i><div><b>${esc(x.desc||'Gasto')}</b><small>${fdate(x.date)}<span class='ch'>Pagó ${esc(famName(x.payer))}</span>${x.fund?"<span class='ch'>🏦 con fondo</span>":''}</small></div></div><div><b>${eur(x.amount)}</b><small style='justify-content:flex-end'>${(x.sh&&x.sh[me])?'tu parte '+eur(x.sh[me]):'no participas'}</small></div></div>`
+  :`<div class='mov'><div class='l'><i class='ic ingreso'>${x.fund?'🏦':'💸'}</i><div><b>${x.fund?(x.from===x.to?esc(famName(x.from))+' apartó para su fondo':esc(famName(x.from))+' dejó un fondo a '+esc(famName(x.to))):esc(famName(x.from))+' pagó a '+esc(famName(x.to))}</b><small>${fdate(x.date)}${x.desc?`<span class='ch'>${esc(x.desc)}</span>`:''}</small></div></div><div><b class='in'>${eur(x.amount)}</b></div><button class='x' data-fa='delpay' data-e='${x.id}' aria-label='Borrar pago'>✕</button></div>`).join('');
  const memH=act.map(m=>`<div class='cr'><div style='flex:1;min-width:0'><b>${esc(m.name)}</b>${m.id===me?" <span class='mu'>(tú)</span>":''}</div><button class='x' data-fa='renm' data-e='${m.id}' aria-label='Renombrar'>✏️</button>${(m.id!==me)?`<button class='x' data-fa='rmm' data-e='${m.id}' aria-label='Quitar miembro'>✕</button>`:''}</div>`).join('');
  const gone=mem.filter(m=>m.off),goneH=gone.length?`<div class='mu' style='margin-top:14px'>Ya no participan (su historial se conserva)</div>`+gone.map(m=>`<div class='cr'><div style='flex:1;min-width:0'><b class='mu'>${esc(m.name)}</b></div><button data-fa='rsm' data-e='${m.id}' style='padding:6px 10px;font-size:13px'>↩︎ Volver a añadir</button></div>`).join(''):'';
  const id=S.fam.id;
+ const holdMe=r2(c.funds.filter(f=>f.holder===me&&f.owner!==me).reduce((t,f)=>t+f.amount,0));
+ const fundH=c.funds.length?c.funds.map(f=>`<div class='mov'><div class='l'><i class='ic' style='background:#e6a81726;color:#e6a817'>🏦</i><div><b>${f.owner===me?'Tu fondo':'Fondo de '+esc(famName(f.owner))}</b><small>${f.owner===f.holder?(f.owner===me?'Dinero apartado por ti':'Dinero apartado por '+esc(famName(f.owner))):f.holder===me?'Lo guardas tú':'Lo guarda '+esc(famName(f.holder))}</small></div></div><div><b>${eur(f.amount)}</b></div></div><div class='row' style='margin:2px 0 10px;gap:8px'><button data-fa='fundspend' data-o='${f.owner}' data-h='${f.holder}' style='padding:6px 12px;font-size:13px'>🎟️ Gastar del fondo</button>${f.owner!==f.holder?`<button data-fa='fundret' data-o='${f.owner}' data-h='${f.holder}' data-amt='${f.amount}' style='padding:6px 12px;font-size:13px'>↩︎ Devolver ${eur(f.amount)}</button>`:''}</div>`).join(''):`<div class='empty'>Ningún fondo guardado</div>`;
  o.innerHTML=`<div class='card' style='background:var(--tx);color:var(--bg);border:0'>
  <div style='opacity:.75'>${esc(FD.name||'Familia')} · ${act.length} ${act.length===1?'miembro':'miembros'}</div>
  <div style='opacity:.9;margin-top:4px'>${hi}</div>
  ${net?`<b style='display:block;font:700 44px/1.15 "Bricolage Grotesque",system-ui;letter-spacing:-.03em;font-variant-numeric:tabular-nums'>${mh(Math.abs(net))}</b>`:''}
- <div style='opacity:.7;font-size:13px;margin-top:12px'>Gasto total ${eur(c.tot)} · Has pagado ${eur(c.paid[me])} · Tu parte ${eur(c.share[me])}</div></div>
+ <div style='opacity:.7;font-size:13px;margin-top:12px'>Gasto total ${eur(c.tot)} · Has pagado ${eur(c.paid[me])} · Tu parte ${eur(c.share[me])}</div>${holdMe>0?`<div style='opacity:.85;font-size:13px;margin-top:6px'>🏦 Guardas ${eur(holdMe)} de fondos de otros (no es tuyo)</div>`:''}</div>
  <button class='pri' data-fa='add' style='width:100%;margin-bottom:14px'>＋ Nuevo gasto</button>
- <div class='card'><b>Liquidación</b><div class='mu'>Con estos pagos todos quedáis a cero, con el mínimo de transferencias. Pulsa «Pagado» cuando se haga cada uno.</div><div style='margin-top:8px'>${planH}</div>${plan.length?`<p style='margin:10px 0 0'><button data-fa='copy'>📋 Copiar liquidación</button></p>`:''}</div>
+ <div class='card'><b>🏦 Fondos</b><div class='mu'>Cada uno tiene su fondo para compras futuras (p. ej. la primitiva). Lo que sobra queda a su nombre y no entra en la liquidación.</div><div style='margin-top:6px'>${fundH}</div><p style='margin:10px 0 0'><button data-fa='fund'>＋ Aportar al fondo</button></p></div>
+ <div class='card'><b>Liquidación</b><div class='mu'>Sin contar lo que está en fondos, con estos pagos todos quedáis a cero, con el mínimo de transferencias. Pulsa «Pagado» cuando se haga cada uno.</div><div style='margin-top:8px'>${planH}</div>${plan.length?`<p style='margin:10px 0 0'><button data-fa='copy'>📋 Copiar liquidación</button></p>`:''}</div>
  <div class='card'><b>Saldo de cada uno</b><div style='margin-top:6px'>${balH}</div></div>
  <div class='card'><b>Gastos y pagos</b><div class='mu'>Toca un gasto para editarlo o borrarlo.</div><div style='margin-top:6px'>${rowH||"<div class='empty'>Aún no hay gastos</div>"}</div></div>
  <div class='card'><b>Miembros</b><div class='mu'>Añade a quien quieras y quita con ✕ a quien ya no participe. Si ya tenía gastos, su historial y su saldo se conservan hasta que se liquide.</div><div style='margin-top:6px'>${memH}${goneH}</div><div class='row' style='margin-top:10px'><input id='famAdd' placeholder='Nombre del nuevo miembro'><button class='pri' data-fa='addm' style='flex:none'>Añadir</button></div></div>
@@ -1539,20 +1565,26 @@ function famDrawSheet(){
   pt.className='';
   pt.innerHTML=mem.map(m=>`<div class="row" style="align-items:center;margin-top:8px"><span style="flex:1.2;min-width:0">${esc(m.name)}</span><input type="number" inputmode="decimal" min="0" step="0.01" data-fcu="${m.id}" value="${esc(famCu[m.id]||'')}" placeholder="0,00"></div>`).join('');
  }
+ // interruptor: pagar con el fondo que el pagador guarda de los participantes
+ const fs=famCalc().funds.filter(f=>f.holder===famPayer),fw=$('famFw');
+ if(fs.length||famFundOn){
+  fw.innerHTML=`<button type="button" class="chip${famFundOn?' on':''}" data-fk="fund" data-fv="">🏦 Pagar con el fondo${fs.length?' ('+fs.map(f=>esc(famName(f.owner))+' '+eur(f.amount)).join(', ')+')':''}</button><div class="mu" style="margin-top:6px">Se descuenta del fondo de cada participante; lo que el fondo no cubra queda como deuda normal.</div>`;
+ }else fw.innerHTML='';
  updFamNote();
 }
-function famOpenSheet(id){
+function famOpenSheet(id,pre){
  const x=id?(FD.exps||[]).find(e=>e.id===id):null,mem=famMem();
  famEdit=x?x.id:null;
  $('famT').textContent=x?'Editar gasto':'Nuevo gasto';
  $('famA').value=x?x.amount:'';$('famC').value=x?(x.desc||''):'';$('famD').value=x?x.date:today();
  famPayer=x&&mem.some(m=>m.id===x.payer)?x.payer:S.fam.me;
- famMode='eq';famSel=new Set(famAct().map(m=>m.id));famCu={};
+ famMode='eq';famSel=new Set(famAct().map(m=>m.id));famCu={};famFundOn=!!(x&&x.fund);
  if(x){
   const ids=Object.keys(x.sh||{});famSel=new Set(ids);
   const t=famShares(x.amount);
   if(!t||!famSame(t,x.sh)){famMode='cu';ids.forEach(k=>famCu[k]=String(x.sh[k]))}
  }
+ if(pre){famPayer=pre.payer;famSel=new Set(pre.sel);famFundOn=true;if(pre.desc)$('famC').value=pre.desc}
  $('famDel').hidden=!x;famDrawSheet();$('famsh').hidden=false;if(!x)$('famA').focus();
 }
 async function famSave(){
@@ -1561,7 +1593,7 @@ async function famSave(){
  if(!famPayer){toast('Elige quién ha pagado');return}
  const sh=famShares(a);
  if(!sh){toast(famMode==='eq'?'Elige al menos a una persona':'Los importes no suman el total');return}
- const x={id:famEdit||uid(),desc:$('famC').value.trim(),amount:a,date:$('famD').value||today(),payer:famPayer,sh};
+ const x={id:famEdit||uid(),desc:$('famC').value.trim(),amount:a,date:$('famD').value||today(),payer:famPayer,sh,...(famFundOn?{fund:true}:{})};
  const edit=famEdit;$('famsh').hidden=true;buzz();
  if(edit){try{await famTx(d=>({exps:(d.exps||[]).map(e=>e.id===edit?x:e)}))}catch(e){toast('No se pudieron guardar los cambios. Revisa la conexión.')}}
  else M.FS.updateDoc(famRef,{exps:M.FS.arrayUnion(x)}).catch(()=>toast('No se pudo guardar'));
@@ -1578,6 +1610,7 @@ $('famsh').addEventListener('click',e=>{
  const t=e.target.closest('[data-fk]');if(!t)return;
  const k=t.dataset.fk,v=t.dataset.fv;
  if(k==='pay')famPayer=v;
+ if(k==='fund')famFundOn=!famFundOn;
  if(k==='mode'&&v!==famMode){
   if(v==='cu'){const a=calc($('famA').value)||0,s=a>0?famShares(a):null;famCu={};if(s)Object.keys(s).forEach(i=>famCu[i]=String(s[i]))}
   famMode=v;
@@ -1586,10 +1619,35 @@ $('famsh').addEventListener('click',e=>{
  if(k==='all')famSel=new Set(famSM().map(m=>m.id));
  famDrawSheet();
 });
+// ----- aportar al fondo: A le da dinero a B para gastarlo; lo que sobre queda a nombre de A -----
+function fdDraw(){
+ const mem=famAct(),me=S.fam.me,ch=(k,cur)=>mem.map(m=>`<button type="button" class="chip${cur===m.id?' on':''}" data-fd="${k}" data-fv="${m.id}">${esc(m.name)}${m.id===me?' (yo)':''}</button>`).join('');
+ $('fdFrom').innerHTML=ch('from',fdFrom);$('fdTo').innerHTML=ch('to',fdTo);
+}
+function fdOpen(){
+ const o=famAct().find(m=>m.id!==S.fam.me);
+ fdFrom=o?o.id:'';fdTo=S.fam.me;
+ $('fdA').value='';$('fdC').value='';$('fdD').value=today();fdDraw();$('famfd').hidden=false;$('fdA').focus();
+}
+$('fdCancel').onclick=()=>$('famfd').hidden=true;
+$('famfd').addEventListener('click',e=>{
+ if(e.target.id==='famfd'){$('famfd').hidden=true;return}
+ const t=e.target.closest('[data-fd]');if(!t)return;
+ if(t.dataset.fd==='from')fdFrom=t.dataset.fv;else fdTo=t.dataset.fv;
+ fdDraw();
+});
+$('fdSave').onclick=()=>{
+ const a=r2(calc($('fdA').value)||0);
+ if(!(a>0)){shake($('fdA'));$('fdA').focus();return}
+ if(!fdFrom||!fdTo)return toast('Elige quién lo da y quién lo guarda');
+ const p={id:uid(),from:fdFrom,to:fdTo,amount:a,date:$('fdD').value||today(),fund:true,desc:$('fdC').value.trim()};
+ $('famfd').hidden=true;
+ M.FS.updateDoc(famRef,{pays:M.FS.arrayUnion(p)}).then(()=>{buzz();toast('Fondo registrado',()=>M.FS.updateDoc(famRef,{pays:M.FS.arrayRemove(p)}))}).catch(()=>toast('No se pudo guardar'));
+};
 // ----- quitar a un miembro con saldo pendiente: preguntar y ofrecer liquidar su deuda -----
 let famRmId=null;
 // pagos que dejan a 0 el saldo de un miembro (los de la liquidación mínima en los que participa)
-const famSettleOf=id=>famPlan(famCalc().n).filter(p=>p.from===id||p.to===id).map(p=>({id:uid(),from:p.from,to:p.to,amount:p.amount,date:today()}));
+const famSettleOf=id=>famPlan(famCalc().np).filter(p=>p.from===id||p.to===id).map(p=>({id:uid(),from:p.from,to:p.to,amount:p.amount,date:today()}));
 async function famDoRemove(id,settled){
  const m=famMem().find(x=>x.id===id);if(!m)return;
  // se decide dentro de la transacción: sin historial se borra del todo; con historial se retira (off) para no descuadrar saldos
@@ -1597,7 +1655,7 @@ async function famDoRemove(id,settled){
  catch(x){toast('No se pudo quitar. Revisa la conexión.')}
 }
 function famAskRemove(id){
- const m=famMem().find(x=>x.id===id),bal=famCalc().n[id]||0;if(!m)return;
+ const m=famMem().find(x=>x.id===id),bal=famCalc().np[id]||0;if(!m)return;
  famRmId=id;
  $('famrmT').textContent='Quitar a '+m.name;
  $('famrmM').textContent=m.name+(bal<0?' debe '+eur(-bal)+'.':' tiene '+eur(bal)+' a su favor.')+' Puedes liquidar su saldo ahora (se registran los pagos necesarios) o quitarlo dejando ese saldo pendiente en la liquidación.';
@@ -1651,6 +1709,15 @@ const famClick=async e=>{
   catch(x){toast('No se pudo unir al grupo')}
  }
  if(a==='add')famOpenSheet();
+ if(a==='fund')fdOpen();
+ if(a==='fundspend'){
+  const o=t.dataset.o,h=t.dataset.h,last=(FD.pays||[]).filter(p=>p.fund&&p.from===o&&p.to===h&&p.desc).sort((x,y)=>y.date.localeCompare(x.date)||y.id.localeCompare(x.id))[0];
+  famOpenSheet(null,{payer:h,sel:[o],desc:last?last.desc:''});
+ }
+ if(a==='fundret'){
+  const p={id:uid(),from:t.dataset.h,to:t.dataset.o,amount:+t.dataset.amt,date:today(),desc:'Devolución del fondo'};
+  FS.updateDoc(famRef,{pays:FS.arrayUnion(p)}).then(()=>{buzz();toast('Fondo devuelto',()=>FS.updateDoc(famRef,{pays:FS.arrayRemove(p)}))}).catch(()=>toast('No se pudo guardar'));
+ }
  if(a==='edit')famOpenSheet(t.dataset.e);
  if(a==='paid'){
   const p={id:uid(),from:t.dataset.from,to:t.dataset.to,amount:+t.dataset.amt,date:today()};
@@ -1672,7 +1739,8 @@ const famClick=async e=>{
  }
  if(a==='rmm'){
   const id=t.dataset.e,m=famMem().find(x=>x.id===id);if(!m||id===S.fam.me)return;
-  const used=famUsed(id,FD),bal=famCalc().n[id]||0;
+  if(famCalc().funds.some(f=>f.owner===id||f.holder===id))return toast('Tiene un fondo guardado: devuélvelo antes de quitarlo');
+  const used=famUsed(id,FD),bal=famCalc().np[id]||0;
   if(used&&Math.abs(bal)>=.005){famAskRemove(id);return} // con saldo pendiente: pregunta y ofrece liquidar
   if(!confirm(!used?'¿Quitar a '+m.name+' del grupo?':'¿Quitar a '+m.name+'? Sus gastos y pagos anteriores se conservan, pero ya no aparecerá al crear gastos nuevos.'))return;
   await famDoRemove(id);

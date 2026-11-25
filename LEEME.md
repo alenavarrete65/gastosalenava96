@@ -47,6 +47,15 @@ El botón de arriba «👥 Grupos» abre dos pestañas:
 Para que se una el resto, comparte el código del grupo: cada uno entra con su cuenta de Google y elige quién es. **Quitar miembros**: pulsa la ✕ junto a su nombre. Si no tiene gastos se borra del todo; si ya tenía historial se conserva (no sale al crear gastos nuevos) y puedes volver a añadirlo con «↩︎ Volver a añadir». Si tiene saldo pendiente, la app pregunta y ofrece **«Liquidar deuda y quitar»** (registra los pagos necesarios para dejarlo a cero) o «Quitar sin liquidar» (su saldo sigue apareciendo en la liquidación hasta que se salde).
 Puedes tener **varios grupos a la vez** (por ejemplo «Familia» y «Viaje a Roma»): se cambia de uno a otro con las pastillas de arriba, y puedes **renombrar** el grupo. Usa la colección `grupos` que ya existe.
 
+## Fondos en Familia (nuevo)
+Para cuando alguien te da dinero para una compra concreta. Ejemplo: Pepe te da 10 € para la primitiva, gastas 8 y los 2 € sobrantes quedan **a nombre de Pepe** para la semana siguiente.
+- En Familia, tarjeta **🏦 Fondos → ＋ Aportar al fondo**: eliges quién da, quién guarda e importe (10 €).
+- Con **🎟️ Gastar del fondo** se abre un gasto ya preparado (paga quien guarda, lo reparte solo a nombre del dueño del fondo): escribes 8 € y guardas. También puedes activar «Pagar con el fondo» en cualquier gasto nuevo.
+- El resto (2 €) sale en «Fondos» y cuenta en el saldo (Pepe +2 €, tú −2 € mientras lo guardes), pero NO se propone pagarlo en la liquidación, y en tu cabecera aparece «Guardas X de fondos de otros (no es tuyo)».
+- **Cada persona tiene su propio fondo** (el de Pepe, el tuyo, el de quien quieras). Si el dinero lo tiene otro, eliges quién; si lo tiene el mismo dueño, eliges a la misma persona en las dos filas y queda como dinero apartado para sus compras futuras.
+- **↩︎ Devolver** registra la devolución en mano; si el fondo no cubre el gasto, la diferencia queda como deuda normal.
+- No hay que tocar las reglas de Firestore. Sube `index.html` y `sw.js` a GitHub.
+
 ## Novedades de esta versión
 - **Calculadora en el importe**: puedes escribir «12+3,50» o «45/3» y usar los botones ＋ − × ÷ =. Se calcula al guardar y se ve en vivo arriba.
 - **Objetivo de ahorro mensual** (pestaña Cuentas): fija cuánto quieres ahorrar al mes y verás tu progreso y los últimos 6 meses.
